@@ -8,6 +8,6 @@ and then clicks on it once there are enough white pixels, which is perceived as 
 coming soon...
 
 ## Todo:
-- Find best bob location, continually (not on first frame)
+- ~~Find best bob location, continually (not on first frame)~~
 - Create programmatic way to capture new templates
 - Create documentation: how to use, how it works, etc...

@@ -2,46 +2,100 @@ import time, sys
 import cv2 as cv
 import numpy as np
 from mss import mss
+from splash_detector import is_splash_whitepx
+import pyautogui as pag
 
 METHOD = cv.TM_CCOEFF_NORMED
 
 def search(settings):
   monitor = settings.get_monitor()
   threshold = settings.threshold
-  mask = np.zeros((monitor["height"],monitor["width"]), np.uint8)
-  cv.fillConvexPoly(mask, settings.area_of_interest, 255)
+  # mask = np.zeros((monitor["height"], monitor["width"]), np.uint8)
+  # cv.fillConvexPoly(mask, settings.area_of_interest, 255)
 
   with mss() as sct:
-    # Part of the screen to capture
     while "Screen capturing":
-      if cv.waitKey(25) & 0xFF == ord('q'):
+      if cv.waitKey(25) & 0xFF == ord("q"):
         break
-      img_color = cv.cvtColor(np.array(sct.grab(monitor)), cv.COLOR_BGRA2GRAY)
-      img = cv.Canny(img_color, 60, 140)
-      img = cv.bitwise_and(img, mask)
-      # cv.imshow('canny', img)
+      img = cv.cvtColor(np.array(sct.grab(monitor)), cv.COLOR_BGRA2GRAY)
+      img = cv.Canny(img, settings.canny_thresholds[0], settings.canny_thresholds[1])
+      # img = cv.bitwise_and(img, mask)
+      cv.imshow('img', img)
       highest_val = 0
       target = None
       for template in settings.templates:
-        start_time = time.time()
         h, w = template.shape
         res = cv.matchTemplate(img, template, METHOD)
-        # set new position
         _, max_val, _, max_loc = cv.minMaxLoc(res)
         if max_val > highest_val:
           highest_val = max_val
           target = max_loc
-        # cv.rectangle(img_color, max_loc, (max_loc[0] + w, max_loc[1] + h), 255, 2)
-        # cv.imshow("Result",  img_color)
-        # print("fps %f" % (1/ (time.time()-start_time)))
       if highest_val > threshold:
-        center = (int(target[0] + w/2), int(target[1] + h/2))
-        print("THRESHOLD REACHED!", highest_val)
+        center = (int(target[0] + w/2 + settings.get_left()), int(target[1] + h/2 + settings.get_top()))
+        print("Threshold reached with a value of", highest_val, "at", center)
         cv.destroyAllWindows()
         return {
-          "top": target[1],
-          "left": target[0],
-          "width": w,
-          "height": h
+          "box": {
+            "top": int(center[1] - h / 2),
+            "left": int(center[0] - w / 2),
+            "width": int(w),
+            "height": int(h)
+          },
+          "center": center
         }
+      print("Leading value is", highest_val)
   cv.destroyAllWindows()
+
+def get_updated_bobber_loc(settings, img):
+  highest_val = 0
+  target = None
+  for template in settings.templates:
+    h, w = template.shape
+    res = cv.matchTemplate(img, template, METHOD)
+    _, max_val, _, max_loc = cv.minMaxLoc(res)
+    if max_val > highest_val:
+      highest_val = max_val
+      target = max_loc
+  center = (int(target[0] + w / 2 + settings.get_left()), int(target[1] + h / 2 + settings.get_top()))
+  return {
+    "box": {
+      "top": int(center[1] - h / 2),
+      "left": int(center[0] - w / 2),
+      "width": int(w),
+      "height": int(h)
+    },
+    "center": center,
+    "value": highest_val
+  }
+
+def search_and_destroy(settings):
+  monitor = settings.get_monitor()
+  threshold = settings.threshold
+
+  with mss() as sct:
+    best_target = None
+    best_target_value = 0
+    while "Screen capturing":
+      if cv.waitKey(25) & 0xFF == ord("q"):
+        break
+      img = cv.cvtColor(np.array(sct.grab(monitor)), cv.COLOR_BGRA2GRAY)
+      img = cv.Canny(img, settings.canny_thresholds[0], settings.canny_thresholds[1])
+      cv.imshow('img', img)
+
+      updated_bobber = get_updated_bobber_loc(settings, img)
+      if (updated_bobber["value"] > best_target_value):
+        best_target_value = updated_bobber["value"]
+        best_target = updated_bobber
+        x, y = best_target["center"]
+        pag.moveTo(x, y, duration=.2)
+        print("New bobber at", (x, y), "with value of", best_target_value)
+
+      img = cv.cvtColor(np.array(sct.grab(best_target["box"])), cv.COLOR_BGRA2GRAY)
+      print("Checking splash")
+      is_splashed = is_splash_whitepx(settings.splash_threshold_whitepx, img)
+      if is_splashed:
+        pag.rightClick()
+        return True
+
+  cv.destroyAllWindows()
+  return False

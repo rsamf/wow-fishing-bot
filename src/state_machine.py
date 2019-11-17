@@ -1,5 +1,5 @@
 import time, sys
-from bob_finder import search
+from bob_finder import search, search_and_destroy
 from splash_detector import seek_splash
 from setup import setup
 from clicker import loot, bait
@@ -15,7 +15,7 @@ time_attached = 0
 
 def init():
   print("in init")
-  config.attach_bait = True
+  config.attach_bait = False
   setup(config)
   move_state(attach_bait)
 
@@ -52,27 +52,27 @@ def attach_bait():
 def cast():
   print("in cast")
   show_ui()
-  pag.moveTo(145, 550, duration=0.5)
+  x,y = config.cast_location
+  pag.moveTo(x, y, duration=0.5)
   pag.click()
-  move_state(search_bob)
+  # move_state(search_bob)
+  move_state(find_hover_wait)
 
 def search_bob():
   global current_bob_loc, current_bob_box
   print("in search bob")
   hide_ui()
   time.sleep(1.65)
-  current_bob_box = search(config)
-  bb = current_bob_box
-  current_bob_loc = (int(bb["left"] + bb["width"]/2),
-                     int(bb["top"] + bb["height"]/2))
+  bobber = search(config)
+  current_bob_loc = bobber["center"]
+  current_bob_box = bobber["box"]
   move_state(hover_bob)
 
 def hover_bob():
   print("in hover bob")
   hide_ui()
   x, y =  current_bob_loc
-  left, top = config.top_left
-  pag.moveTo(x - left, y - top, duration=.2)
+  pag.moveTo(x, y, duration=.2)
   move_state(wait_for_splash)
 
 def wait_for_splash():
@@ -82,6 +82,13 @@ def wait_for_splash():
     time.sleep(random.random()/2+.2)
     pag.rightClick()
     move_state(loot_fish)
+
+def find_hover_wait():
+  print("finding, hovering, then waiting")
+  hide_ui()
+  time.sleep(1.65)
+  search_and_destroy(config)
+  move_state(loot_fish)
 
 def loot_fish():
   print("looting fish")

@@ -3,6 +3,7 @@ import numpy as np
 import cv2 as cv
 import math, time
 
+#NOT USED
 def is_splash(threshold, og, current):
   count = 0
   value = 0
@@ -20,6 +21,7 @@ def is_splash(threshold, og, current):
     i = i + 1
   return value > threshold
 
+#NOT USED
 def is_splash_whitepx(threshold, current):
   H, W = current.shape
   white_pixels = 0

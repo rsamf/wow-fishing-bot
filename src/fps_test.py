@@ -1,14 +1,20 @@
-import sys
+import sys, time
 import cv2 as cv
 import numpy as np
-import time
 from mss import mss
+from settings import Settings
+from setup import setup
 import pyautogui as pag
+
+
+config = Settings()
+setup(config)
 
 with mss() as sct:
   # Part of the screen to capture
-  monitor = {"top": 0, "left": 0, "width": 1000, "height": 570}
-
+  # monitor = {"top": 0, "left": 0, "width": 1000, "height": 570}
+  monitor = config.get_monitor()
+  print(monitor)
   while "Screen capturing":
     last_time = time.time()
 
