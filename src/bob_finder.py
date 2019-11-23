@@ -9,44 +9,44 @@ import random
 METHOD = cv.TM_CCOEFF_NORMED
 
 # NOT USED
-def search(settings):
-  monitor = settings.get_monitor()
-  threshold = settings.threshold
-  # mask = np.zeros((monitor["height"], monitor["width"]), np.uint8)
-  # cv.fillConvexPoly(mask, settings.area_of_interest, 255)
-
-  with mss() as sct:
-    while "Screen capturing":
-      if cv.waitKey(25) & 0xFF == ord("q"):
-        break1
-      img = cv.cvtColor(np.array(sct.grab(monitor)), cv.COLOR_BGRA2GRAY)
-      img = cv.Canny(img, settings.canny_thresholds[0], settings.canny_thresholds[1])
-      # img = cv.bitwise_and(img, mask)
-      cv.imshow('img', img)
-      highest_val = 0
-      target = None
-      for template in settings.templates:
-        h, w = template.shape
-        res = cv.matchTemplate(img, template, METHOD)
-        _, max_val, _, max_loc = cv.minMaxLoc(res)
-        if max_val > highest_val:
-          highest_val = max_val
-          target = max_loc
-      if highest_val > threshold:
-        center = (int(target[0] + w/2 + settings.get_left()), int(target[1] + h/2 + settings.get_top()))
-        print("Threshold reached with a value of", highest_val, "at", center)
-        cv.destroyAllWindows()
-        return {
-          "box": {
-            "top": int(center[1] - h / 2),
-            "left": int(center[0] - w / 2),
-            "width": int(w),
-            "height": int(h)
-          },
-          "center": center
-        }
-      print("Leading value is", highest_val)
-  cv.destroyAllWindows()
+# def search(settings):
+#   monitor = settings.get_monitor()
+#   threshold = settings.threshold
+#   # mask = np.zeros((monitor["height"], monitor["width"]), np.uint8)
+#   # cv.fillConvexPoly(mask, settings.area_of_interest, 255)
+#
+#   with mss() as sct:
+#     while "Screen capturing":
+#       if cv.waitKey(25) & 0xFF == ord("q"):
+#         break1
+#       img = cv.cvtColor(np.array(sct.grab(monitor)), cv.COLOR_BGRA2GRAY)
+#       img = cv.Canny(img, settings.canny_thresholds[0], settings.canny_thresholds[1])
+#       # img = cv.bitwise_and(img, mask)
+#       cv.imshow('img', img)
+#       highest_val = 0
+#       target = None
+#       for template in settings.templates:
+#         h, w = template.shape
+#         res = cv.matchTemplate(img, template, METHOD)
+#         _, max_val, _, max_loc = cv.minMaxLoc(res)
+#         if max_val > highest_val:
+#           highest_val = max_val
+#           target = max_loc
+#       if highest_val > threshold:
+#         center = (int(target[0] + w/2 + settings.get_left()), int(target[1] + h/2 + settings.get_top()))
+#         print("Threshold reached with a value of", highest_val, "at", center)
+#         cv.destroyAllWindows()
+#         return {
+#           "box": {
+#             "top": int(center[1] - h / 2),
+#             "left": int(center[0] - w / 2),
+#             "width": int(w),
+#             "height": int(h)
+#           },
+#           "center": center
+#         }
+#       print("Leading value is", highest_val)
+#   cv.destroyAllWindows()
 
 def get_updated_bobber_loc(settings, img):
   highest_val = 0
@@ -72,7 +72,6 @@ def get_updated_bobber_loc(settings, img):
 
 def search_and_destroy(settings):
   monitor = settings.get_monitor()
-  threshold = settings.threshold
   start_time = time.time()
 
   with mss() as sct:

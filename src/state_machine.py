@@ -1,5 +1,5 @@
 import time, sys
-from bob_finder import search, search_and_destroy
+from bob_finder import search_and_destroy
 from splash_detector import seek_splash
 from setup import initialize, get_single_loc
 from clicker import bait
@@ -12,13 +12,17 @@ current_bob_loc = (0,0)
 current_bob_box = (0,0)
 ui_is_hidden = False
 time_attached = 0
-
 round_count = 0
 successes = 0
 
+##
+## Set this to True to attach bait every 10 min
+##
+config.attach_bait = False
+
+
 def init():
   print("in init")
-  config.attach_bait = False
   initialize(config)
   move_state(attach_bait)
 
@@ -84,7 +88,7 @@ def wait_for_splash():
   print("waiting for splash")
   hide_ui()
   if seek_splash(config, current_bob_box):
-    time.sleep(random.random()/2+.5)
+    time.sleep(random.random()+.5)
     pag.rightClick()
     move_state(loot_fish)
 

@@ -11,7 +11,7 @@ class Settings():
     self.pole_location = None
     self.cast_location = None
     self.loot_location = None
-    self.threshold = 0.30
+    # self.threshold = 0.30
     self.splash_threshold_whitepx = 5
     self.canny_thresholds = [80, 180]
     self.templateFiles = [
@@ -30,7 +30,7 @@ class Settings():
     ]
     self.templates = []
     for f in self.templateFiles:
-      self.templates.append(cv.Canny(cv.cvtColor(cv.imread(f), cv.COLOR_BGR2GRAY), 60, 140))
+      self.templates.append(cv.Canny(cv.cvtColor(cv.imread(f), cv.COLOR_BGR2GRAY), self.canny_thresholds[0], self.canny_thresholds[1]))
 
   def get_monitor(self):
     top = self.top_left[1]

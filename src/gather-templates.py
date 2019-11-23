@@ -3,6 +3,7 @@ import time, sys, os
 import cv2 as cv
 import numpy as np
 from mss import mss
+from pynput.keyboard import Key, Listener
 
 width = 50
 height = 50
@@ -35,7 +36,7 @@ def main():
       key_bit = cv.waitKey(25) & 0xFF
       if key_bit == ord("q"):
         break
-      if key_bit == ord("w"):
+      with Listener(on_release=cap)
         capture(im)
   cv.destroyAllWindows()
 

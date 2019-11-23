@@ -11,19 +11,27 @@ pixels in grayscale.
 
 ## How to Use
 You may follow the steps below. You can also watch a demo video here: [coming soon...]()
+
+#### First-Time Setup
+The first thing to do is to gather some template images. These are images of the fishing bobber casted independently.
+Multiple images of different orientations and sizes of the fishing bobber is required to improve accuracy. 
+To capture these images, I recommend reducing the game window to the size that you think botting will proceed with and
+to capture these images with the Snipping Tool app. Save these images to wherever you want, and in `settings.py`, 
+provide the paths to these images that you want to use.
+
 #### Steps
 1. Turn liquid quality to ultra.
 1. Find a body of water that is not reflecting the sun.
-1. Run the program as administrator.
+1. Run the program `state_machine.py` as administrator.
 1. Look in first person, and start drawing the border to the area of interest. This area is the body of water where the fishing bobber may appear.
  You will draw it by placing at least 3 points that define the shape, and these points are placed when the cursor hasn't 
  moved for 1 second. Leaving the cursor at the ending point will finish the shape.
 1. Now, point to the casting ability for 1 second.
 1. It will start fishing on its own, but you're not done...
-1. On the first round of fishing, it won't know where to loot, so hold the cursor at the appropriate when your loot pops up.
+1. On the first round of fishing, it won't know where to loot, so hold the cursor at the appropriate location when your loot pops up.
 1. Now, you're done!
 
-Note: Once a splash is detected, there is an added click delay that ranges .5 - 1 seconds. This is
+Note: Once a splash is detected, there is an added click delay that ranges .5 - 1.5 seconds. This is
 intended to show human-like reaction to any admin that may suspect you for botting. Also, I wouldn't fish for more
 than a couple of hours.
 
@@ -40,9 +48,11 @@ program, use at your own risk because I believe it does not abide with their rul
 I think I had an encounter with an admin as I was working and testing this program, but since I was supervising it, I was able to 
 take command and show human-like reactions.
 
+**Also, this program is really accurate if you catch decent template images.**
+
 ## Todo:
 - ~~Find best bob location, continually (not on first frame)~~
-- Create programmatic way to capture new templates
 - ~~Create documentation: how to use, how it works, etc...~~
+- ~~If splash wasn't detected for casting time length, then recast. This means it fails. <- Statistic opportunity here.~~
 - Create demo video
-- If splash wasn't detected for casting time length, then recast. This means it fails. <- Statistic opportunity here.
+- Create programmatic way to capture new templates
