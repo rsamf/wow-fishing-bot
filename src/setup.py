@@ -5,11 +5,18 @@ import numpy as np
 def distance(p1, p2):
   return math.sqrt( (p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 )
 
+def countdown(secs):
+  while secs > 0:
+    print(str(secs) + "...")
+    time.sleep(1)
+    secs = secs - 1
+
 def get_single_loc(name):
+  print("Point to location of %s for 1 sec in..." % name)
+  countdown(3)
   point = None
   last_point = (0,0)
   start_time = time.time()
-  print("Point to location of %s for 1 sec" % name)
   while True:
     x, y = pag.position()
     if last_point == (x,y):
@@ -29,10 +36,11 @@ def get_pole_loc():
   return l
 
 def get_area_of_interest():
+  print("Start drawing area of interest in...")
+  countdown(3)
   points = []
   last_point = (0,0)
   last_time = time.time()
-  print("Start drawing area of interest")
   while True:
     x, y = pag.position()
     if(last_point != (x, y)):
@@ -51,7 +59,7 @@ def get_area_of_interest():
         print(points)
     time.sleep(0.05)
 
-def setup(settings):
+def initialize(settings):
   def get_extreme(arr, i, cmp):
     ext = arr[0][i]
     for el in arr[1:]:

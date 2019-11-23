@@ -4,9 +4,11 @@ import numpy as np
 from mss import mss
 from splash_detector import is_splash_whitepx
 import pyautogui as pag
+import random
 
 METHOD = cv.TM_CCOEFF_NORMED
 
+# NOT USED
 def search(settings):
   monitor = settings.get_monitor()
   threshold = settings.threshold
@@ -16,7 +18,7 @@ def search(settings):
   with mss() as sct:
     while "Screen capturing":
       if cv.waitKey(25) & 0xFF == ord("q"):
-        break
+        break1
       img = cv.cvtColor(np.array(sct.grab(monitor)), cv.COLOR_BGRA2GRAY)
       img = cv.Canny(img, settings.canny_thresholds[0], settings.canny_thresholds[1])
       # img = cv.bitwise_and(img, mask)
@@ -71,16 +73,19 @@ def get_updated_bobber_loc(settings, img):
 def search_and_destroy(settings):
   monitor = settings.get_monitor()
   threshold = settings.threshold
+  start_time = time.time()
 
   with mss() as sct:
     best_target = None
     best_target_value = 0
     while "Screen capturing":
+      if time.time() - start_time > 30:
+        return False
       if cv.waitKey(25) & 0xFF == ord("q"):
         break
       img = cv.cvtColor(np.array(sct.grab(monitor)), cv.COLOR_BGRA2GRAY)
       img = cv.Canny(img, settings.canny_thresholds[0], settings.canny_thresholds[1])
-      cv.imshow('img', img)
+      # cv.imshow('img', img)
 
       updated_bobber = get_updated_bobber_loc(settings, img)
       if (updated_bobber["value"] > best_target_value):
@@ -91,7 +96,6 @@ def search_and_destroy(settings):
         print("New bobber at", (x, y), "with value of", best_target_value)
 
       img = cv.cvtColor(np.array(sct.grab(best_target["box"])), cv.COLOR_BGRA2GRAY)
-      print("Checking splash")
       is_splashed = is_splash_whitepx(settings.splash_threshold_whitepx, img)
       if is_splashed:
         pag.rightClick()

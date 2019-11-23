@@ -1,8 +1,8 @@
 import time, sys
 from bob_finder import search, search_and_destroy
 from splash_detector import seek_splash
-from setup import setup
-from clicker import loot, bait
+from setup import initialize, get_single_loc
+from clicker import bait
 import pyautogui as pag
 from settings import Settings
 import random
@@ -13,10 +13,13 @@ current_bob_box = (0,0)
 ui_is_hidden = False
 time_attached = 0
 
+round_count = 0
+successes = 0
+
 def init():
   print("in init")
   config.attach_bait = False
-  setup(config)
+  initialize(config)
   move_state(attach_bait)
 
 state_func = init
@@ -30,6 +33,7 @@ def hide_ui():
 def show_ui():
   global ui_is_hidden
   if ui_is_hidden:
+    print("showing ui")
     ui_is_hidden = False
     pag.hotkey('alt', 'z')
     pag.typewrite('b')
@@ -55,6 +59,7 @@ def cast():
   x,y = config.cast_location
   pag.moveTo(x, y, duration=0.5)
   pag.click()
+  print("clicked")
   # move_state(search_bob)
   move_state(find_hover_wait)
 
@@ -84,10 +89,14 @@ def wait_for_splash():
     move_state(loot_fish)
 
 def find_hover_wait():
+  global round_count, successes
   print("finding, hovering, then waiting")
   hide_ui()
   time.sleep(1.65)
-  search_and_destroy(config)
+  result = search_and_destroy(config)
+  round_count = round_count + 1
+  successes = successes + (1 if result else 0)
+  print( "accuracy is %f%%" % (round(100 * successes/round_count)) )
   move_state(loot_fish)
 
 def loot_fish():
@@ -97,7 +106,9 @@ def loot_fish():
     x, y = config.loot_location
     pag.moveTo(x, y, duration=.75)
   else:
-    config.loot_location = setup.get_single_loc()
+    config.loot_location = get_single_loc('loot')
+    print("Location is " + str(config.loot_location) + \
+          " for next time if you want to put it in config.loot_location")
   pag.rightClick()
   move_state(attach_bait)
 

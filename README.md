@@ -18,7 +18,7 @@ You may follow the steps below. You can also watch a demo video here: [coming so
 1. Look in first person, and start drawing the border to the area of interest. This area is the body of water where the fishing bobber may appear.
  You will draw it by placing at least 3 points that define the shape, and these points are placed when the cursor hasn't 
  moved for 1 second. Leaving the cursor at the ending point will finish the shape.
-1. Now, point to the casting ability
+1. Now, point to the casting ability for 1 second.
 1. It will start fishing on its own, but you're not done...
 1. On the first round of fishing, it won't know where to loot, so hold the cursor at the appropriate when your loot pops up.
 1. Now, you're done!
@@ -26,6 +26,12 @@ You may follow the steps below. You can also watch a demo video here: [coming so
 Note: Once a splash is detected, there is an added click delay that ranges .5 - 1 seconds. This is
 intended to show human-like reaction to any admin that may suspect you for botting. Also, I wouldn't fish for more
 than a couple of hours.
+
+#### If attach.bait is set to True
+1. Follow steps 1-3 above.
+2. Point to the location of the bait in your inventory for 1 second.
+3. Point to the location of your fishing pole in your character menu for 1 second.
+4. Resume following the rest of the steps above, starting from step 4.
 
 ## Why?
 Because World of Warcraft fishing mechanism is pretty simple, this can easily be automated with a program. I decided 
