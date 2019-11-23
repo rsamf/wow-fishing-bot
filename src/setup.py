@@ -38,7 +38,7 @@ def get_area_of_interest(settings):
     if(last_point != (x, y)):
       last_time = time.time()
     last_point = (x, y)
-    if time.time() - last_time > .75:
+    if time.time() - last_time > 1:
       if points != [] and points[-1] == (x, y):
         if len(points) > 2:
           return np.array(points, dtype=np.int32)
