@@ -79,7 +79,7 @@ def wait_for_splash():
   print("waiting for splash")
   hide_ui()
   if seek_splash(config, current_bob_box):
-    time.sleep(random.random()/2+.2)
+    time.sleep(random.random()/2+.5)
     pag.rightClick()
     move_state(loot_fish)
 
@@ -93,11 +93,13 @@ def find_hover_wait():
 def loot_fish():
   print("looting fish")
   show_ui()
-  loot()
+  if config.loot_location:
+    x, y = config.loot_location
+    pag.moveTo(x, y, duration=.75)
+  else:
+    config.loot_location = setup.get_single_loc()
+  pag.rightClick()
   move_state(attach_bait)
 
 while True:
-  # print(pag.position())
-  # time.sleep(1)
   state_func()
-  # search_bob()

@@ -12,7 +12,7 @@ pixels in grayscale.
 ## How to Use
 You may follow the steps below. You can also watch a demo video here: [coming soon...]()
 #### Steps
-1. Turn water quality to ultra.
+1. Turn liquid quality to ultra.
 1. Find a body of water that is not reflecting the sun.
 1. Run the program as administrator.
 1. Look in first person, and start drawing the border to the area of interest. This area is the body of water where the fishing bobber may appear.
@@ -22,6 +22,10 @@ You may follow the steps below. You can also watch a demo video here: [coming so
 1. It will start fishing on its own, but you're not done...
 1. On the first round of fishing, it won't know where to loot, so hold the cursor at the appropriate when your loot pops up.
 1. Now, you're done!
+
+Note: Once a splash is detected, there is an added click delay that ranges .5 - 1 seconds. This is
+intended to show human-like reaction to any admin that may suspect you for botting. Also, I wouldn't fish for more
+than a couple of hours.
 
 ## Why?
 Because World of Warcraft fishing mechanism is pretty simple, this can easily be automated with a program. I decided 

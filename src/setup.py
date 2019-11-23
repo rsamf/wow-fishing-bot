@@ -5,7 +5,7 @@ import numpy as np
 def distance(p1, p2):
   return math.sqrt( (p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 )
 
-def get_single_loc(settings, name):
+def get_single_loc(name):
   point = None
   last_point = (0,0)
   start_time = time.time()
@@ -22,13 +22,13 @@ def get_single_loc(settings, name):
     time.sleep(0.05)
     last_point = (x, y)
 
-def get_pole_loc(settings):
+def get_pole_loc():
   pag.typewrite('c')
-  l = get_single_loc(settings, 'fishing pole')
+  l = get_single_loc('fishing pole')
   pag.typewrite('c')
   return l
 
-def get_area_of_interest(settings):
+def get_area_of_interest():
   points = []
   last_point = (0,0)
   last_time = time.time()
@@ -51,7 +51,6 @@ def get_area_of_interest(settings):
         print(points)
     time.sleep(0.05)
 
-
 def setup(settings):
   def get_extreme(arr, i, cmp):
     ext = arr[0][i]
@@ -65,10 +64,10 @@ def setup(settings):
     return a > b
 
   if settings.attach_bait:
-    settings.bait_location = get_single_loc(settings, 'bait')
-    settings.pole_location = get_pole_loc(settings)
-  settings.area_of_interest = get_area_of_interest(settings)
-  settings.cast_location = get_single_loc(settings, 'cast action')
+    settings.bait_location = get_single_loc('bait')
+    settings.pole_location = get_pole_loc()
+  settings.area_of_interest = get_area_of_interest()
+  settings.cast_location = get_single_loc('cast action')
 
   min_x = get_extreme(settings.area_of_interest, 0, less)
   min_y = get_extreme(settings.area_of_interest, 1, less)

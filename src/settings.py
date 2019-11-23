@@ -10,9 +10,9 @@ class Settings():
     self.bait_location = None
     self.pole_location = None
     self.cast_location = None
+    self.loot_location = None
     self.threshold = 0.30
     self.splash_threshold_whitepx = 5
-    self.loot_loc = (50,50)
     self.canny_thresholds = [80, 180]
     self.templateFiles = [
       '../images/bob-13.png',
