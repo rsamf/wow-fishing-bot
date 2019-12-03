@@ -19,6 +19,7 @@ successes = 0
 ## Set this to True to attach bait every 10 min
 ##
 config.attach_bait = False
+config.num_bait = 3
 
 
 def init():
@@ -51,8 +52,9 @@ def attach_bait():
   print('in bait')
   show_ui()
   # 10 min = 10 * 60 sec
-  if config.attach_bait and time.time() - time_attached > 600:
+  if config.attach_bait and time.time() - time_attached > 600 and config.num_bait > 0:
     bait(config)
+    config.num_bait = config.num_bait - 1
     time_attached = time.time()
   move_state(cast)
 
@@ -100,7 +102,7 @@ def find_hover_wait():
   result = search_and_destroy(config)
   round_count = round_count + 1
   successes = successes + (1 if result else 0)
-  print( "accuracy is %f%%" % (round(100 * successes/round_count)) )
+  print( "accuracy is %f%% (n=%d)" % (round(100 * successes/round_count), round_count) )
   move_state(loot_fish)
 
 def loot_fish():
