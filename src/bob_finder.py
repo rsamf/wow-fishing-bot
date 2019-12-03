@@ -1,7 +1,7 @@
 import time, sys
 import cv2 as cv
 import numpy as np
-from mss import mss
+from mss import mss, exception as MSSException
 from splash_detector import is_splash_whitepx
 import pyautogui as pag
 import random
@@ -49,7 +49,7 @@ METHOD = cv.TM_CCOEFF_NORMED
 #   cv.destroyAllWindows()
 
 def get_updated_bobber_loc(settings, img):
-  highest_val = 0
+  highest_val = -1
   target = None
   for template in settings.templates:
     h, w = template.shape
@@ -82,7 +82,11 @@ def search_and_destroy(settings):
         return False
       if cv.waitKey(25) & 0xFF == ord("q"):
         break
-      img = cv.cvtColor(np.array(sct.grab(monitor)), cv.COLOR_BGRA2GRAY)
+      img = None
+      try:
+        img = cv.cvtColor(np.array(sct.grab(monitor)), cv.COLOR_BGRA2GRAY)
+      except (MSSException.ScreenShotError):
+        continue
       img = cv.Canny(img, settings.canny_thresholds[0], settings.canny_thresholds[1])
       # cv.imshow('img', img)
 
@@ -94,7 +98,10 @@ def search_and_destroy(settings):
         pag.moveTo(x, y, duration=.2)
         print("New bobber at", (x, y), "with value of", best_target_value)
 
-      img = cv.cvtColor(np.array(sct.grab(best_target["box"])), cv.COLOR_BGRA2GRAY)
+      try:
+        img = cv.cvtColor(np.array(sct.grab(best_target["box"])), cv.COLOR_BGRA2GRAY)
+      except (MSSException.ScreenShotError):
+        continue
       is_splashed = is_splash_whitepx(settings.splash_threshold_whitepx, img)
       if is_splashed:
         pag.rightClick()
