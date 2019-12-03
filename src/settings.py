@@ -7,6 +7,7 @@ class Settings():
     self.top_left = None
     self.bot_right = None
     self.attach_bait = False
+    self.num_bait = 10
     self.bait_location = None
     self.pole_location = None
     self.cast_location = None
