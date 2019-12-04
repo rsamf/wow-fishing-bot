@@ -7,10 +7,10 @@ keyboard events. No GPU needed since this doesn't use object detection.
 It detects the fishing bobber using [template matching](https://docs.opencv.org/master/d4/dc6/tutorial_py_template_matching.html),
 and then clicks on it once there are enough white pixels, which is perceived as a splash. This is possible with these simple 
 methods because the fishing bobber has a predicable rotation and the image of the splash is always expected to have brighter 
-pixels in grayscale. 
+pixels in grayscale. Fixed things like fishing bait, fishing pole, loot, and cast action are found by user setup.
 
 ## How to Use
-You may follow the steps below. You can also watch a demo video here: [coming soon...]()
+You may follow the steps below. You can also watch a demo video down below.
 
 #### First-Time Setup
 The first thing to do is to gather some template images. These are images of the fishing bobber casted independently.
@@ -35,11 +35,17 @@ Note: Once a splash is detected, there is an added click delay that ranges .5 - 
 intended to show human-like reaction to any admin that may suspect you for botting. Also, I wouldn't fish for more
 than a couple of hours.
 
-#### If attach.bait is set to True
+#### If attach_bait is set to True
+To do this, make sure that the attach_bait property is set to true in `settings.py`. This will attach fishing bait to the fishing pole every 10min.
 1. Follow steps 1-3 above.
 2. Point to the location of the bait in your inventory for 1 second.
 3. Point to the location of your fishing pole in your character menu for 1 second.
 4. Resume following the rest of the steps above, starting from step 4.
+
+#### Demo Video (Includes Attaching of Fishing Bait to Pole)
+<a href="http://www.youtube.com/watch?feature=player_embedded&v=6conRJqjcTE
+" target="_blank"><img src="http://img.youtube.com/vi/6conRJqjcTE/0.jpg" 
+alt="IMAGE ALT TEXT HERE" width="240" height="180" border="10" /></a>
 
 ## Why?
 Because World of Warcraft fishing mechanism is pretty simple, this can easily be automated with a program. I decided 
