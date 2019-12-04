@@ -13,7 +13,7 @@ class Settings():
     self.cast_location = None
     self.loot_location = None
     # self.threshold = 0.30
-    self.splash_threshold_whitepx = 5
+    self.splash_threshold_whitepx = 25
     self.canny_thresholds = [80, 180]
     self.templateFiles = [
       '../images/bob-13.png',

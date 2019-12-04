@@ -28,12 +28,13 @@ def is_splash_whitepx(threshold, current):
   while i < H:
     j = 0
     while j < W:
-      if current[i][j] > 180:
+      if current[i][j] > 245:
         white_pixels = white_pixels + 1
       if white_pixels > threshold:
         return True
       j = j + 1
     i = i + 1
+  print(white_pixels)
   return False
 
 def seek_splash(config, area_of_interest):
