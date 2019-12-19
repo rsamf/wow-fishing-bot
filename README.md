@@ -60,5 +60,6 @@ take command and show human-like reactions.
 - ~~Find best bob location, continually (not on first frame)~~
 - ~~Create documentation: how to use, how it works, etc...~~
 - ~~If splash wasn't detected for casting time length, then recast. This means it fails. <- Statistic opportunity here.~~
-- Create demo video
+- ~~Create demo video~~
+- Create *better* demo video
 - Create programmatic way to capture new templates
