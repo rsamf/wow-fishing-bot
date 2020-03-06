@@ -1,0 +1,7 @@
+numpy==1.17.3
+opencv-python==4.1.0.30
+loguru==0.4.1
+PyAutoGUI==0.9.44
+mss==5.0.0
+pynput==1.6.8
+pywinauto==0.6.8

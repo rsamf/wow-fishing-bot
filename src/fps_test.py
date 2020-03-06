@@ -5,6 +5,8 @@ from mss import mss
 from settings import Settings
 from setup import setup
 import pyautogui as pag
+from loguru import logger
+
 
 
 config = Settings()
@@ -14,7 +16,7 @@ with mss() as sct:
   # Part of the screen to capture
   # monitor = {"top": 0, "left": 0, "width": 1000, "height": 570}
   monitor = config.get_monitor()
-  print(monitor)
+  logger.info(monitor)
   while "Screen capturing":
     last_time = time.time()
 
@@ -28,8 +30,8 @@ with mss() as sct:
     # cv2.imshow('OpenCV/Numpy grayscale',
     #            cv2.cvtColor(img, cv2.COLOR_BGRA2GRAY))
 
-    print("fps: {}".format(1 / (time.time() - last_time)))
-    print(pag.position())
+    logger.info("fps: {}".format(1 / (time.time() - last_time)))
+    logger.info(pag.position())
 
     # Press "q" to quit
     if cv.waitKey(25) & 0xFF == ord("q"):
