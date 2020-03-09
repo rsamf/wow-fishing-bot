@@ -2,24 +2,7 @@ from mss import mss
 import numpy as np
 import cv2 as cv
 import math, time
-
-#NOT USED
-# def is_splash(threshold, og, current):
-#   count = 0
-#   value = 0
-#   H, W = og.shape
-#   i = 0
-#   while i < H:
-#     j = 0
-#     while j < W:
-#       currPX = int(current[i][j])
-#       ogPX = int(og[i][j])
-#       diff_norm = abs(currPX - ogPX)/255
-#       value = count/(count+1) * value + 1/(count+1) * diff_norm
-#       count = count+1
-#       j = j + 1
-#     i = i + 1
-#   return value > threshold
+from loguru import logger
 
 def is_splash_whitepx(threshold, current):
   H, W = current.shape
@@ -34,7 +17,6 @@ def is_splash_whitepx(threshold, current):
         return True
       j = j + 1
     i = i + 1
-  print(white_pixels)
   return False
 
 def seek_splash(config, area_of_interest):
@@ -49,7 +31,7 @@ def seek_splash(config, area_of_interest):
       else:
         splashed = is_splash_whitepx(config.splash_threshold_whitepx, img)
         if splashed:
-          print("SPLASHED!")
+          logger.info("SPLASHED!")
           return True
       key_bit = cv.waitKey(25) & 0xFF
       if key_bit == ord("q"):

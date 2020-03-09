@@ -2,12 +2,8 @@ import pyautogui as pag
 import time
 
 def bait(settings):
-  x, y = settings.bait_location
-  pag.moveTo(x, y, duration = .5)
+  pag.moveTo(settings.bait_location, duration = 1)
   pag.rightClick()
-  pag.typewrite('c')
-  x, y = settings.pole_location
-  pag.moveTo(x, y, duration = .5)
+  pag.moveTo(settings.pole_location, duration = 1)
   pag.click()
   time.sleep(8)
-  pag.typewrite('c')

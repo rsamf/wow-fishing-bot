@@ -2,8 +2,10 @@ import pyautogui as pag
 import time, sys, os
 import cv2 as cv
 import numpy as np
+from loguru import logger
 from mss import mss
 from pynput.keyboard import Key, Listener
+
 
 width = 50
 height = 50
@@ -29,14 +31,14 @@ def main():
         "width": int(width),
         "height": int(height)
       }
-      print((x, y))
+      logger.info(f"({x}, {y})")
       im = np.array(sct.grab(area))
       cv.imshow('preview', im)
 
       key_bit = cv.waitKey(25) & 0xFF
       if key_bit == ord("q"):
         break
-      with Listener(on_release=cap)
+      with Listener(on_release=cap):
         capture(im)
   cv.destroyAllWindows()
 

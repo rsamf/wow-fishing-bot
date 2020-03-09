@@ -1,4 +1,6 @@
 import cv2 as cv
+import os
+from loguru import logger 
 
 class Settings():
   def __init__(self):
@@ -12,27 +14,25 @@ class Settings():
     self.pole_location = None
     self.cast_location = None
     self.loot_location = None
+    self.auto_loot = False
+    self.img_dir = ""
     # self.threshold = 0.30
     self.splash_threshold_whitepx = 25
     self.canny_thresholds = [80, 180]
-    self.templateFiles = [
-      '../images/bob-13.png',
-      '../images/bob-14.png',
-      '../images/bob-15.png',
-      '../images/bob-16.png',
-      '../images/bob-17.png',
-      '../images/bob-18.png',
-      '../images/bob-19.png',
-      '../images/bob-20.png',
-      '../images/bob-21.png',
-      '../images/bob-22.png',
-      '../images/bob-23.png',
-      '../images/bob-24.png'
-    ]
-    self.templates = []
-    for f in self.templateFiles:
-      self.templates.append(cv.Canny(cv.cvtColor(cv.imread(f), cv.COLOR_BGR2GRAY), self.canny_thresholds[0], self.canny_thresholds[1]))
+    self.attach_bait = False
+    self.num_bait = 3
+    self.time_before_logout = None
+    self.graceful_exit = False
+    self.hearthstone_location = None
 
+    self.templates = []
+    
+  def load_images(self):
+    for f in os.listdir(self.img_dir):
+      self.templates.append(cv.Canny(cv.cvtColor(cv.imread(f"{self.img_dir}/{f}"), cv.COLOR_BGR2GRAY), self.canny_thresholds[0], self.canny_thresholds[1]))
+    
+    logger.info("Loaded all images in the ./images folder...") 
+      
   def get_monitor(self):
     top = self.top_left[1]
     left = self.top_left[0]
