@@ -21,7 +21,7 @@ class Settings():
     self.canny_thresholds = [80, 180]
     self.attach_bait = False
     self.num_bait = 3
-    self.time_before_logout = None
+    self.time_before_logout = 3600
     self.graceful_exit = False
     self.hearthstone_location = None
 

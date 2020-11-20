@@ -3,6 +3,7 @@
 ```json
 {
     "attachBait": true,
+    "timeInSecsBeforeLogout": 3600,
     "autoLoot": true,
     "imageDir": "",
     "castLocation": {
