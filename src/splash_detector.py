@@ -5,18 +5,11 @@ import math, time
 from loguru import logger
 
 def is_splash_whitepx(threshold, current):
-  H, W = current.shape
-  white_pixels = 0
-  i = 0
-  while i < H:
-    j = 0
-    while j < W:
-      if current[i][j] > 245:
-        white_pixels = white_pixels + 1
-      if white_pixels > threshold:
-        return True
-      j = j + 1
-    i = i + 1
+  white_pixels = (current >= 245).sum()
+  if white_pixels> threshold:
+      print(f'>>> {white_pixels}')
+      return True
+  print(f'<<< {white_pixels}')
   return False
 
 def seek_splash(config, area_of_interest):
