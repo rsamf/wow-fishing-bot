@@ -1,0 +1,57 @@
+[project]
+name = "wowfish"
+version = "1.0.0a1"
+description = "A vision-based fishing bot for World of Warcraft: Forever"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Richard Franklin" }]
+requires-python = ">=3.12"
+dependencies = [
+  "typer>=0.27,<1",
+  "platformdirs>=4.13,<5",
+  "loguru>=0.7,<1",
+  "huggingface_hub>=2.2,<3",
+  "onnxruntime>=1.31,<2",
+  "numpy>=2.5,<3",
+  "tomli-w>=1.2,<2",
+]
+
+[project.optional-dependencies]
+train = []
+
+[project.scripts]
+wowfish = "wowfish.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/rsamf/wow-fishing-forever"
+
+[dependency-groups]
+dev = [
+  "ruff>=0.17,<1",
+  "pytest>=9,<10",
+  "pytest-cov>=7,<8",
+  "pyinstaller>=6.22,<7",
+  "onnx>=1.23,<2",
+  "pre-commit>=4,<5",
+]
+
+[build-system]
+requires = ["hatchling>=1.32"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wowfish"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: hits the network (Hugging Face Hub); run explicitly"]
+addopts = "-m 'not integration' --strict-markers"
