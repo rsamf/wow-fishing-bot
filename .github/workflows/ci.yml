@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / py${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest, macos-latest]
+        python: ["3.12", "3.13"]
+    env:
+      WOWFISH_HOME: ${{ github.workspace }}/.wowfish-home
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+
+      - name: Sync
+        run: uv sync --group dev
+
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Unit tests
+        run: uv run pytest -v
+
+      - name: Integration tests (Hugging Face Hub)
+        run: uv run pytest -m integration -v
+
+      - name: Build executable
+        run: uv run pyinstaller --clean --noconfirm packaging/wowfish.spec
+
+      - name: Smoke executable (POSIX)
+        if: runner.os != 'Windows'
+        run: |
+          ./dist/wowfish --version
+          ./dist/wowfish doctor
+          ./dist/wowfish models pull
+          ./dist/wowfish doctor
+
+      - name: Smoke executable (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          .\dist\wowfish.exe --version; if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          .\dist\wowfish.exe doctor;    if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          .\dist\wowfish.exe models pull; if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          .\dist\wowfish.exe doctor;    if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: Upload executable
+        if: matrix.python == '3.12'
+        uses: actions/upload-artifact@v7
+        with:
+          name: wowfish-${{ matrix.os }}
+          path: dist/wowfish*
+          if-no-files-found: error
