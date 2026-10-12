@@ -124,3 +124,13 @@ def models_pull(
             typer.echo(f"{p.name:<14} {_human_size(p.stat().st_size)}")
     except models.ModelDownloadError as e:
         fail(str(e))
+
+
+@app.command()
+def doctor() -> None:
+    """Check this machine: display, onnxruntime, models, config. Exits 1 only on hard failures."""
+    from wowfish import doctor as doc
+
+    results = doc.run_probes(doc.default_probes())
+    typer.echo(doc.render(results))
+    raise typer.Exit(code=doc.exit_code(results))

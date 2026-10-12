@@ -82,3 +82,20 @@ def test_models_status_shows_config_override(cli_runner):
     result = cli_runner.invoke(app, ["models", "status"])
     assert "dev-branch" in result.output
     assert "override" in result.output
+
+
+def test_doctor_exits_0_on_a_bare_machine(cli_runner):
+    result = cli_runner.invoke(app, ["doctor"])
+    assert result.exit_code == 0
+    lines = result.output.strip().splitlines()
+    assert any(line.startswith("ok    system:") for line in lines)
+    assert any(line.startswith("warn  game window:") for line in lines)
+    assert any(line.startswith("warn  models:") for line in lines)
+    assert "Traceback" not in result.output
+
+
+def test_doctor_exits_1_on_broken_config(cli_runner):
+    paths.config_file().write_text("[game]\ncast_key = \n")
+    result = cli_runner.invoke(app, ["doctor"])
+    assert result.exit_code == 1
+    assert any(line.startswith("fail  config:") for line in result.output.splitlines())
