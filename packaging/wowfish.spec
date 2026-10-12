@@ -7,7 +7,7 @@ Build with: uv run pyinstaller --clean --noconfirm packaging/wowfish.spec
 from PyInstaller.utils.hooks import collect_all, copy_metadata
 
 datas, binaries, hiddenimports = [], [], []
-for pkg in ("onnxruntime", "huggingface_hub"):
+for pkg in ("onnxruntime", "huggingface_hub", "hf_xet"):
     d, b, h = collect_all(pkg)
     datas += d
     binaries += b
