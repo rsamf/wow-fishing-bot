@@ -23,8 +23,8 @@ from wowfish import paths
 from wowfish.config import Config
 
 MODEL_REPO = "rsamf/wow-fishing-forever"
-# Replaced with a full commit hash once the Hub repo exists (see release checklist).
-MODEL_REVISION = "main"
+# Full commit hash in MODEL_REPO. Bump deliberately; every release pins one.
+MODEL_REVISION = "dc7c2c85ad846259cdb4a7fd62892fe5acf2b32c"
 
 Downloader = Callable[..., str]
 
