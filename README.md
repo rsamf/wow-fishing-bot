@@ -1,65 +1,95 @@
-# wow-fishing-bot
-A fishing bot for World of Warcraft created with OpenCV. 
+# wow-fishing-forever
 
-## How it Works
-This program captures a portion of the screen and simulates mouse and
-keyboard events. No GPU needed since this doesn't use object detection. 
-It detects the fishing bobber using [template matching](https://docs.opencv.org/master/d4/dc6/tutorial_py_template_matching.html),
-and then clicks on it once there are enough white pixels, which is perceived as a splash. This is possible with these simple 
-methods because the fishing bobber has a predicable rotation and the image of the splash is always expected to have brighter 
-pixels in grayscale. Fixed things like fishing bait, fishing pole, loot, and cast action are found by user setup.
+A vision-based fishing bot for **World of Warcraft: Forever**, successor to the 2019
+[wow-fishing-bot](https://github.com/rsamf/wow-fishing-forever/tree/60d0710). It watches
+the game window, finds the bobber with a small neural network, waits for the splash, and
+reels in. No template images to capture, no screen regions to draw, no coordinates to set.
 
-## How to Use
-You may follow the steps below. You can also watch a demo video down below.
+> **Use at your own risk.** Automating gameplay violates Blizzard's terms of service and can
+> get your account banned. This project exists as a computer vision exercise. Nothing here
+> hides from anti-cheat, and nothing here should be run on an account you care about.
 
-#### First-Time Setup
-The first thing to do is to gather some template images. These are images of the fishing bobber casted independently.
-Multiple images of different orientations and sizes of the fishing bobber is required to improve accuracy. 
-To capture these images, I recommend reducing the game window to the size that you think botting will proceed with and
-to capture these images with the Snipping Tool app. Save these images to wherever you want, and in `settings.py`, 
-provide the paths to these images that you want to use.
+## Status
 
-#### Steps
-1. Turn liquid quality to ultra.
-1. Find a body of water that is not reflecting the sun.
-1. Run the program `state_machine.py` as administrator.
-1. Look in first person, and start drawing the border to the area of interest. This area is the body of water where the fishing bobber may appear.
- You will draw it by placing at least 3 points that define the shape, and these points are placed when the cursor hasn't 
- moved for 1 second. Leaving the cursor at the ending point will finish the shape.
-1. Now, point to the casting ability for 1 second.
-1. It will start fishing on its own, but you're not done...
-1. On the first round of fishing, it won't know where to loot, so hold the cursor at the appropriate location when your loot pops up.
-1. Now, you're done!
+**Alpha.** This release ships the installer, the `wowfish doctor` environment check, config
+handling, and model download. Fishing itself lands in a later release once the detection
+models are trained on Forever footage. Follow the releases page for progress.
 
-Note: Once a splash is detected, there is an added click delay that ranges .5 - 1.5 seconds. This is
-intended to show human-like reaction to any admin that may suspect you for botting. Also, I wouldn't fish for more
-than a couple of hours.
+## Install
 
-#### If attach_bait is set to True
-To do this, make sure that the attach_bait property is set to true in `settings.py`. This will attach fishing bait to the fishing pole every 10min.
-1. Follow steps 1-3 above.
-2. Point to the location of the bait in your inventory for 1 second.
-3. Point to the location of your fishing pole in your character menu for 1 second.
-4. Resume following the rest of the steps above, starting from step 4.
+### Players: download an executable
 
-#### Demo Video (Includes Attaching of Fishing Bait to Pole)
-<a href="http://www.youtube.com/watch?feature=player_embedded&v=6conRJqjcTE
-" target="_blank"><img src="http://img.youtube.com/vi/6conRJqjcTE/0.jpg" 
-alt="IMAGE ALT TEXT HERE" width="240" height="180" border="10" /></a>
+Grab the file for your OS from the
+[latest release](https://github.com/rsamf/wow-fishing-forever/releases/latest):
 
-## Why?
-Because World of Warcraft fishing mechanism is pretty simple, this can easily be automated with a program. I decided 
-to take this challenge on as an educational opportunity and to practice my skills with OpenCV. If you decide to use this 
-program, use at your own risk because I believe it does not abide with their rules, so if you get banned it's not on me.
-I think I had an encounter with an admin as I was working and testing this program, but since I was supervising it, I was able to 
-take command and show human-like reactions.
+| OS | file |
+|---|---|
+| Windows 10/11 (x86_64) | `wowfish-<version>-windows-x86_64.exe` |
+| macOS (Apple Silicon) | `wowfish-<version>-macos-arm64` |
+| Linux (x86_64) | `wowfish-<version>-linux-x86_64` |
 
-**Also, this program is really accurate if you catch decent template images.**
+The executables are not code-signed, so the first launch needs one extra step:
 
-## Todo:
-- ~~Find best bob location, continually (not on first frame)~~
-- ~~Create documentation: how to use, how it works, etc...~~
-- ~~If splash wasn't detected for casting time length, then recast. This means it fails. <- Statistic opportunity here.~~
-- ~~Create demo video~~
-- Create *better* demo video
-- Create programmatic way to capture new templates
+- **Windows:** SmartScreen shows "Windows protected your PC". Click *More info*, then
+  *Run anyway*.
+- **macOS:** Gatekeeper blocks it. Run `xattr -d com.apple.quarantine wowfish-*` in Terminal
+  once, and `chmod +x wowfish-*` if needed. Intel Macs: use the developer install below.
+- **Linux:** `chmod +x wowfish-*`.
+
+Verify downloads against `SHA256SUMS.txt` from the same release.
+
+### Developers: install from source
+
+Requires [uv](https://docs.astral.sh/uv/).
+
+    uv tool install git+https://github.com/rsamf/wow-fishing-forever@v1.0.0a1
+
+or clone and run in place:
+
+    git clone https://github.com/rsamf/wow-fishing-forever
+    cd wow-fishing-forever
+    uv sync --group dev
+    uv run wowfish doctor
+
+## First run
+
+1. In WoW, open *Interface > Controls* and enable **Auto Loot**. The bot never looks for a
+   loot window.
+2. Put the Fishing ability on your action bar. Note its keybind (default `1` in wowfish).
+3. Run `wowfish doctor`. Every line should be `ok` or `warn`; a `fail` means the install
+   is broken and the line says why.
+4. Run `wowfish models pull` to download the detection models from Hugging Face.
+5. Run `wowfish config` to create the config file and see where it lives. Edit `cast_key`
+   if your Fishing keybind is not `1`.
+
+## Commands
+
+| command | what it does |
+|---|---|
+| `wowfish doctor` | Check OS, display server, onnxruntime, models, config |
+| `wowfish models pull` | Download model weights (pinned per release) |
+| `wowfish models status` | Show which weights are cached and where |
+| `wowfish config` | Create the config file if needed and print the resolved settings |
+| `wowfish config --path` | Print only the config file location |
+| `wowfish --version` | Print the version |
+
+Add `--verbose` before any command for debug logging. `doctor` prints the log file path.
+
+## How it works
+
+The bot captures the game window, runs a tiny ONNX bobber localizer on each frame, crops
+around the bobber, and runs a splash classifier on the crop. On a splash it right-clicks the
+bobber after a short randomized delay, waits for Auto Loot, and casts again. Models are
+trained in PyTorch on recorded Forever fishing sessions and exported to ONNX so the shipped
+executable never needs torch. Weights live at
+[huggingface.co/rsamf/wow-fishing-forever](https://huggingface.co/rsamf/wow-fishing-forever).
+
+## Looking for the old bot?
+
+The original OpenCV template-matching version is preserved at commit
+[`60d0710`](https://github.com/rsamf/wow-fishing-forever/tree/60d0710). It targets WoW
+Classic on Windows and requires manual setup. It is unmaintained.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
