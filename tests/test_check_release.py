@@ -42,3 +42,14 @@ def test_revision_check_passes_and_fails():
     with pytest.raises(SystemExit) as exc:
         check_revision_exists("r", "abc", api=_Api(False))
     assert exc.value.code == 1
+
+
+def test_main_exits_1_on_mismatched_tag_and_prints_nothing_to_stdout(capsys):
+    from check_release import main
+
+    with pytest.raises(SystemExit) as exc:
+        main("v9.9.9")
+    assert exc.value.code == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "does not match" in err

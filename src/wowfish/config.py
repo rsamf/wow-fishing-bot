@@ -26,6 +26,8 @@ session_minutes = 60
 """
 
 _LINE_RE = re.compile(r"\(at line (\d+), column \d+\)")
+# Commit hashes, tags, and simple branch names. Used as a path component, so no separators.
+_REVISION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 class ConfigError(Exception):
@@ -87,7 +89,13 @@ def load_config(path: Path | None = None) -> tuple[Config, list[str]]:
         built[section] = _build_section(path, section, cls, table, warnings)
     for leftover in raw:
         warnings.append(f"unknown section [{leftover}] ignored")
-    return Config(**built), warnings
+    cfg = Config(**built)
+    rev = cfg.models.revision
+    if rev is not None and not _REVISION_RE.match(rev):
+        raise ConfigError(
+            path, f"models.revision must be a commit hash, tag, or simple branch name, got {rev!r}"
+        )
+    return cfg, warnings
 
 
 def _build_section(

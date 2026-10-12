@@ -101,3 +101,15 @@ def test_pull_wraps_missing_revision_as_packaging_bug(err):
     assert "Model revision deadbeef not found" in str(exc.value)
     assert models.MODEL_REPO in str(exc.value)
     assert "packaging bug" in str(exc.value)
+
+
+def test_pull_wraps_unexpected_transport_errors_too():
+    class ReadError(Exception):  # stands in for httpx2.ReadError, which is not an OSError
+        pass
+
+    def flaky(*a, **k):
+        raise ReadError("connection reset mid-download")
+
+    with pytest.raises(models.ModelDownloadError) as exc:
+        models.pull("r5", downloader=flaky)
+    assert "Download of bobber.onnx failed" in str(exc.value)

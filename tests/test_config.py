@@ -78,3 +78,20 @@ def test_to_toml_renders_both_tables():
 def test_to_toml_omits_none_revision():
     text = to_toml(Config(game=GameConfig(), models=ModelsConfig()))
     assert "revision" not in text
+
+
+@pytest.mark.parametrize("bad", ["../../evil", "refs/pr/1", "a:b", "", " main"])
+def test_models_revision_must_be_a_simple_ref(bad):
+    paths.config_file().write_text(f'[models]\nrevision = "{bad}"\n')
+    with pytest.raises(ConfigError) as exc:
+        load_config()
+    assert "models.revision" in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "good", ["main", "dev-branch", "v1.0", "dc7c2c85ad846259cdb4a7fd62892fe5acf2b32c"]
+)
+def test_models_revision_accepts_simple_refs(good):
+    paths.config_file().write_text(f'[models]\nrevision = "{good}"\n')
+    cfg, _ = load_config()
+    assert cfg.models.revision == good

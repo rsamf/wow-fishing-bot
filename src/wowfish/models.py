@@ -13,7 +13,6 @@ from pathlib import Path
 from huggingface_hub import hf_hub_download
 from huggingface_hub.errors import (
     EntryNotFoundError,
-    HfHubHTTPError,
     LocalEntryNotFoundError,
     RepositoryNotFoundError,
     RevisionNotFoundError,
@@ -97,7 +96,7 @@ def pull(
                 f"Model revision {revision} not found in {MODEL_REPO}. "
                 "This is a packaging bug; please report it."
             ) from e
-        except (HfHubHTTPError, OSError) as e:
+        except Exception as e:  # httpx transport errors are not OSError subclasses
             raise ModelDownloadError(f"Download of {st.spec.filename} failed: {e}") from e
         results.append(st.path)
     return results

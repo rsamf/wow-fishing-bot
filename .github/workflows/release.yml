@@ -19,6 +19,8 @@ jobs:
           python-version: "3.12"
       - run: uv sync
       - id: check
+        # `shell: bash` gives `-eo pipefail`; the default shell would take tee's exit code.
+        shell: bash
         run: uv run python scripts/check_release.py "${GITHUB_REF_NAME}" | tee -a "$GITHUB_OUTPUT"
 
   build:
@@ -69,6 +71,8 @@ jobs:
 
   publish:
     needs: [preflight, build]
+    # Never publish if preflight produced no verdict.
+    if: needs.preflight.outputs.prerelease != ''
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/download-artifact@v8
