@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  preflight:
+    runs-on: ubuntu-22.04
+    outputs:
+      prerelease: ${{ steps.check.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.12"
+      - run: uv sync
+      - id: check
+        run: uv run python scripts/check_release.py "${GITHUB_REF_NAME}" | tee -a "$GITHUB_OUTPUT"
+
+  build:
+    needs: preflight
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: linux-x86_64
+          - os: windows-latest
+            target: windows-x86_64
+          - os: macos-latest
+            target: macos-arm64
+    runs-on: ${{ matrix.os }}
+    env:
+      WOWFISH_HOME: ${{ github.workspace }}/.wowfish-home
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.12"
+      - run: uv sync --group dev
+      - run: uv run pytest -v
+      - run: uv run pyinstaller --clean --noconfirm packaging/wowfish.spec
+
+      - name: Smoke and rename (POSIX)
+        if: runner.os != 'Windows'
+        run: |
+          ./dist/wowfish --version
+          ./dist/wowfish doctor
+          mv dist/wowfish "dist/wowfish-${GITHUB_REF_NAME#v}-${{ matrix.target }}"
+
+      - name: Smoke and rename (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          .\dist\wowfish.exe --version; if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          .\dist\wowfish.exe doctor;    if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $v = $env:GITHUB_REF_NAME.TrimStart("v")
+          Move-Item dist\wowfish.exe "dist\wowfish-$v-${{ matrix.target }}.exe"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ matrix.target }}
+          path: dist/wowfish-*
+          if-no-files-found: error
+
+  publish:
+    needs: [preflight, build]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist
+      - name: Checksums
+        run: cd dist && sha256sum wowfish-* > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*
+          generate_release_notes: true
+          prerelease: ${{ needs.preflight.outputs.prerelease == 'true' }}
