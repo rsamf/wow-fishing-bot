@@ -92,7 +92,7 @@ def watch(
 
     from wowfish.vision.annotate import annotate_match
     from wowfish.vision.calibrate import calibrate_icon_scale
-    from wowfish.vision.matcher import IconMatcher
+    from wowfish.vision.matcher import MIN_TEMPLATE_PX, IconMatcher
     from wowfish.vision.search import IconSearch
     from wowfish.vision.template import load_icon_templates, template_for_size
 
@@ -123,6 +123,14 @@ def watch(
                         f"(score {cal.score:.2f}); run `wowfish calibrate --save` to persist"
                     )
                 matcher = IconMatcher(template_for_size(templates, size), cfg.vision.match_width)
+                px = matcher.template_px(frame.shape[1])
+                if px < MIN_TEMPLATE_PX:
+                    fail(
+                        f"icon_size_px={size} is {px} px after downscaling this "
+                        f"{frame.shape[1]}-wide frame to match_width={cfg.vision.match_width} "
+                        f"(minimum {MIN_TEMPLATE_PX}); run `wowfish calibrate --save` on a "
+                        "screenshot with the gear icon visible"
+                    )
                 search = IconSearch(matcher, threshold)
             phase, m = search.step(frame)
             ms = grab_ms + (time.perf_counter() - started) * 1000  # grab + match

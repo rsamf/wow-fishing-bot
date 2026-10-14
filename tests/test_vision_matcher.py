@@ -96,3 +96,18 @@ def test_annotate_draws_a_box_on_a_thumbnail_of_the_matched_frame():
     assert (box[:, :, 1] > 150).any()  # green rectangle pixels present
     untouched = annotate_match(frame, IconMatch(NO_MATCH, -1, -1, 40, 0.0), thumb_width=480)
     assert untouched.shape == thumb.shape
+
+
+def test_template_below_the_match_space_floor_is_no_match():
+    """At 5K a 19 px icon becomes a 7 px blob after downscaling to 1920 and matches anything."""
+    from wowfish.vision.matcher import MIN_TEMPLATE_PX
+
+    frame = _frame(4986, 2816, 19, 2432, 1482)
+    tiny = IconMatcher(template_for_size(TEMPLATES, 19), match_width=1920)
+    assert tiny.template_px(4986) < MIN_TEMPLATE_PX
+    assert tiny.match(frame).score == NO_MATCH
+    big = IconMatcher(template_for_size(TEMPLATES, 56), match_width=1920)
+    assert big.template_px(4986) >= MIN_TEMPLATE_PX
+    small = _frame(1920, 1080, 18, 700, 400)  # no downscale: 18 px is above the floor
+    m = IconMatcher(template_for_size(TEMPLATES, 18), match_width=1920).match(small)
+    assert m.score >= 0.75 and abs(m.x - 700) <= 2 and abs(m.y - 400) <= 2

@@ -103,8 +103,10 @@ Add `--verbose` before any command for debug logging. `doctor` prints the log fi
 **The icon.** The client draws a gold gear sprite over the bobber when it is in interact
 range. wowfish ships that sprite at its five native sizes and matches it against the game
 window with a masked, mean-subtracted template match, so only the gear's own pixels count and
-water never out-scores it. Calibration measures the on-screen size once. After each cast the
-whole frame is searched; once the icon is found only a small box around it is tracked.
+water never out-scores it. Calibration measures the on-screen size once and only accepts a
+candidate whose score drops sharply at neighbouring sizes, which a real gear does and a patch
+of skin or UI gold does not. After each cast the whole frame is searched; once the icon is
+found only a small box around it is tracked.
 
 **The bite.** The client plays one of its splash clips when a fish bites. wowfish ships those
 clips and fingerprints the first 0.8 seconds of each as a log-mel spectrogram with the gain

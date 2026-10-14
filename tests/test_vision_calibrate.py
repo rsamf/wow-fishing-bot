@@ -74,3 +74,35 @@ def test_calibration_reports_gold_and_validity():
     assert not bad.valid
     empty = calibrate_icon_scale(water_background(1920, 1080, np.random.default_rng(5)), TEMPLATES)
     assert not empty.valid
+
+
+def test_a_character_without_the_icon_is_not_a_valid_calibration():
+    """Warm skin passes the gold gate and tiny templates score ~0.7 on it; the score must also
+    peak sharply across sizes, which only a real gear does."""
+    from wowfish.vision.calibrate import PROMINENCE_MIN
+
+    frame = cv2.imread("tests/fixtures/wow_noicon_crop.png")  # the player, no bobber in range
+    cal = calibrate_icon_scale(frame, TEMPLATES)
+    assert not cal.valid
+    assert cal.prominence < PROMINENCE_MIN
+
+
+def test_a_real_icon_has_a_prominent_peak_across_sizes():
+    from wowfish.vision.calibrate import PROMINENCE_MIN
+
+    frame = cv2.imread("tests/fixtures/wow_icon_crop.png")
+    cal = calibrate_icon_scale(frame, TEMPLATES)
+    assert cal.valid and cal.prominence >= PROMINENCE_MIN + 0.05
+    synth = water_background(1920, 1080, np.random.default_rng(7))
+    paste_icon(synth, icon_rgba(), 24, 700, 400)
+    assert calibrate_icon_scale(synth, TEMPLATES).valid
+
+
+NOICON_FRAME = "superpowers/spike/live_noicon.png"
+
+
+@pytest.mark.skipif(not __import__("os").path.exists(NOICON_FRAME), reason="local spike frame only")
+def test_full_live_frame_without_a_bobber_is_not_valid():
+    frame = cv2.imread(NOICON_FRAME)  # 4986x2816, player centred, no icon anywhere
+    cal = calibrate_icon_scale(frame, TEMPLATES)
+    assert not cal.valid, cal

@@ -12,6 +12,9 @@ from wowfish.vision.template import IconTemplate, resize_template
 
 NO_MATCH = -1.0
 GOLD_MIN = 0.12  # masked mean of (R - B) / 255; the gold sprite is ~0.3, the grey one ~0
+# Smallest template side, in match-space pixels, that still looks like a gear. Below this the
+# sprite is a warm blob and scores ~0.85 on skin, hair, and wood (seen live: 19 px at 5K -> 7 px).
+MIN_TEMPLATE_PX = 12
 
 
 @dataclass(frozen=True)
@@ -38,17 +41,23 @@ class IconMatcher:
             t = self._scaled[size] = resize_template(self.template, size)
         return t
 
+    def template_px(self, frame_width: int) -> int:
+        """Template side in match-space pixels for a frame this wide (after any downscale)."""
+        return round(self.template.size * min(1.0, self.match_width / frame_width))
+
     def match(self, frame_bgr: np.ndarray, region: Region | None = None) -> IconMatch:
         if frame_bgr.ndim != 3 or frame_bgr.shape[2] != 3:
             raise ValueError("frame must be HxWx3 BGR")
         h, w = frame_bgr.shape[:2]
+        tsize = self.template_px(w)
+        if tsize < MIN_TEMPLATE_PX:
+            return IconMatch(NO_MATCH, -1, -1, self.template.size, 0.0)
         x0, y0, x1, y1 = (region or FULL).to_box(w, h)
         crop = np.ascontiguousarray(frame_bgr[y0:y1, x0:x1])
         scale = min(1.0, self.match_width / w)
         if scale < 1.0:
             size = (max(1, round(crop.shape[1] * scale)), max(1, round(crop.shape[0] * scale)))
             crop = cv2.resize(crop, size, interpolation=cv2.INTER_AREA)
-        tsize = max(6, round(self.template.size * scale))
         if crop.shape[0] < tsize or crop.shape[1] < tsize:
             return IconMatch(NO_MATCH, -1, -1, self.template.size, 0.0)
         t = self._template(tsize)

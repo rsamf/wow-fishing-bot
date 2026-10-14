@@ -186,3 +186,14 @@ def test_watch_waits_for_an_icon_before_self_calibrating(cli_runner, tmp_path):
     assert "waiting" in result.output
     assert "FOUND" in result.output
     assert "icon_size_px=127" not in result.output
+
+
+def test_watch_refuses_an_icon_size_too_small_for_the_window(cli_runner, tmp_path):
+    frame = water_background(4986, 2816, np.random.default_rng(0))
+    p = tmp_path / "big.png"
+    cv2.imwrite(str(p), frame)
+    paths.config_file().write_text("[vision]\nicon_size_px = 19\n")
+    result = cli_runner.invoke(app, ["watch", "--from", str(p)])
+    assert result.exit_code == 1, result.output
+    assert "icon_size_px=19" in result.output and "7 px" in result.output
+    assert "calibrate" in result.output
