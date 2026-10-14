@@ -13,6 +13,7 @@ dependencies = [
   "loguru>=0.7,<1",
   "numpy>=2.5,<3",
   "tomli-w>=1.2,<2",
+  "opencv-python-headless>=4.10,<5",
 ]
 
 [project.optional-dependencies]
