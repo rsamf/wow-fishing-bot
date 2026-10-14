@@ -13,6 +13,8 @@ from wowfish import paths
 from wowfish.commands._common import load_config_or_fail
 from wowfish.config import save_config
 
+MIN_MARGIN = 0.15
+
 
 def verify_bite(
     recording: Annotated[
@@ -41,6 +43,17 @@ def verify_bite(
         typer.echo(f"{cs.name:16s} peak {cs.score:5.2f} at {cs.t:6.2f}s   floor {floor:5.2f}")
     family, threshold = suggest(scores, fps, p)
     typer.echo(f"bite family: {family}   suggested bite_threshold={threshold:.2f}")
+    best = max(clip_peaks(scores, fps, p), key=lambda c: c.score)
+    margin = best.score - noise_floor(scores[best.name], int(np.argmax(scores[best.name])), p)
+    if margin < MIN_MARGIN:
+        typer.echo(
+            f"warning: no clip stands out (peak only {margin:.2f} above its floor); record again "
+            "with Ambience and Music at 0 and one clear bite",
+            err=True,
+        )
+        if save:
+            typer.echo("not saved", err=True)
+            raise typer.Exit(code=1)
     if save:
         audio = replace(cfg.audio, bite_clip=family, bite_threshold=threshold)
         save_config(replace(cfg, audio=audio))

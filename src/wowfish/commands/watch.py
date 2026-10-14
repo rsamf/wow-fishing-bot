@@ -35,16 +35,23 @@ def _live_frames(title: str, fps: float, seconds: float) -> Iterator[tuple[float
     from wowfish import capture
 
     window = capture.find_window(title)
-    if window is None:
+    if window is not None:
+        cap = capture.get_capturer()
+    elif capture.linux_x11():
+        fail(f"no window titled {title!r}; is the game running?")
+    else:
         from wowfish.capture import _mss
 
         try:
             window = _mss.primary_monitor_window()
+            cap = _mss.MssCapturer()
         except Exception as e:
             fail(f"no window titled {title!r} and no screen capture available ({e})")
         typer.echo(f"window {title!r} not found; capturing the primary monitor", err=True)
-    cap = capture.get_capturer()
-    cap.open(window)
+    try:
+        cap.open(window)
+    except Exception as e:
+        fail(f"cannot open capture for {window.title!r}: {e}")
     typer.echo(f"capturing {window.title} {window.width}x{window.height} at {fps:g} fps", err=True)
     start = time.perf_counter()
     try:

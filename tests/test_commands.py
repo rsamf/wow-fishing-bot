@@ -140,3 +140,23 @@ def test_doctor_reports_opencv_and_audio(cli_runner, monkeypatch):
     assert result.exit_code == 0
     assert any(line.startswith("ok    opencv:") for line in result.output.splitlines())
     assert any(line.startswith("warn  audio:") for line in result.output.splitlines())
+
+
+def test_verify_bite_refuses_to_save_when_nothing_stands_out(cli_runner, tmp_path):
+    from tests.synth_audio import pink_noise
+
+    p = tmp_path / "noise.wav"
+    write_wav(p, pink_noise(6 * RATE, np.random.default_rng(11)), RATE)
+    result = cli_runner.invoke(app, ["verify-bite", str(p), "--save"])
+    assert result.exit_code == 1 and "no clip stands out" in result.output
+    assert load_config()[0].audio.bite_threshold == 0.7
+
+
+def test_watch_live_without_the_game_fails_cleanly_on_linux(cli_runner, monkeypatch):
+    from wowfish import capture
+
+    monkeypatch.setattr(capture, "find_window", lambda title="": None)
+    monkeypatch.setattr(capture, "linux_x11", lambda: True)
+    result = cli_runner.invoke(app, ["watch", "--live", "--seconds", "1"])
+    assert result.exit_code == 1 and "is the game running" in result.output
+    assert "Traceback" not in result.output

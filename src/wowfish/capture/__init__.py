@@ -34,13 +34,13 @@ class Capturer(Protocol):
     def close(self) -> None: ...
 
 
-def _linux_x11() -> bool:
+def linux_x11() -> bool:
     return sys.platform == "linux" and bool(os.environ.get("DISPLAY"))
 
 
 def find_window(title_substring: str = "World of Warcraft") -> WindowRef | None:
     """The largest viewable window whose title contains the text. Linux/X11 only for now."""
-    if _linux_x11():
+    if linux_x11():
         from wowfish.capture._x11 import find_window_x11
 
         return find_window_x11(title_substring)
@@ -48,7 +48,7 @@ def find_window(title_substring: str = "World of Warcraft") -> WindowRef | None:
 
 
 def get_capturer() -> Capturer:
-    if _linux_x11():
+    if linux_x11():
         from wowfish.capture._x11 import X11WindowCapturer
 
         return X11WindowCapturer()
@@ -63,4 +63,4 @@ def get_capturer() -> Capturer:
     return MssCapturer()
 
 
-__all__ = ["Box", "Capturer", "WindowRef", "find_window", "get_capturer"]
+__all__ = ["Box", "Capturer", "WindowRef", "find_window", "get_capturer", "linux_x11"]
