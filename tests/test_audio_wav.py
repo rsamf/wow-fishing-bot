@@ -41,11 +41,31 @@ def test_resample_changes_length_and_keeps_a_tone(tmp_path):
     assert resample(y, 48000, 48000) is y
 
 
-def test_unsupported_sample_width_is_an_error(tmp_path):
-    with wave.open(str(tmp_path / "w.wav"), "wb") as w:
-        w.setnchannels(1)
-        w.setsampwidth(5)
-        w.setframerate(8000)
-        w.writeframes(b"\x00" * 50)
+def test_unsupported_sample_width_is_an_error(monkeypatch, tmp_path):
+    from wowfish.audio import wav as wav_module
+
+    class _FiveByteReader:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return None
+
+        def getnchannels(self):
+            return 1
+
+        def getsampwidth(self):
+            return 5  # the stdlib writer cannot produce this, so stub the reader
+
+        def getframerate(self):
+            return 8000
+
+        def getnframes(self):
+            return 10
+
+        def readframes(self, n):
+            return b"\x00" * 50
+
+    monkeypatch.setattr(wav_module.wave, "open", lambda *a, **k: _FiveByteReader())
     with pytest.raises(ValueError):
         read_wav(tmp_path / "w.wav")
