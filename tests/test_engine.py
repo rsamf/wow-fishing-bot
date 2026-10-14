@@ -21,6 +21,7 @@ from wowfish.config import AudioConfig, Config, GameConfig, RunConfig, VisionCon
 from wowfish.engine import events as ev
 from wowfish.engine.engine import FishingEngine
 from wowfish.engine.state import State
+from wowfish.vision.calibrate import Calibration
 
 CFG = Config(
     game=GameConfig(cast_key="8", interact_key="f", session_minutes=60),
@@ -28,6 +29,22 @@ CFG = Config(
     audio=AudioConfig(),
     run=RunConfig(pause_min_s=0.5, pause_max_s=0.5, key_hold_ms=50),
 )
+
+
+class FakeCalibrate:
+    """calibrate(frame) -> Calibration; `results[i]` for the i-th call, last repeats."""
+
+    def __init__(self, results):
+        self.results = results
+        self.calls = 0
+
+    def __call__(self, frame, **kw):
+        self.calls += 1
+        return self.results[min(self.calls - 1, len(self.results) - 1)]
+
+
+VALID = Calibration(58, 79, 0.92, 200, 150, gold=0.28, prominence=0.3)
+INVALID = Calibration(19, 29, 0.7, 10, 10, gold=0.15, prominence=0.05)
 
 
 def make(**kw):
@@ -38,11 +55,17 @@ def make(**kw):
         "detector": FakeDetector(),
         "matcher": FakeMatcher(),
         "clock": FakeClock(),
+        "calibrate": FakeCalibrate([INVALID]),  # the real sweep is slow and needs a real icon
     }
     deps.update(kw)
     clock = deps["clock"]
+    extra = {
+        k: deps[k]
+        for k in ("matcher_factory", "calibrate", "on_calibrated", "find_window")
+        if k in deps
+    }
     eng = FishingEngine(
-        kw.get("cfg", CFG),
+        deps.get("cfg", CFG),
         WINDOW,
         capturer=deps["capturer"],
         input_device=deps["input_device"],
@@ -52,6 +75,7 @@ def make(**kw):
         clock=clock,
         sleep=clock.sleep,
         rng=random.Random(0),
+        **extra,
     )
     return eng, deps
 
@@ -367,16 +391,6 @@ def test_thumbnail_box_marks_the_icon_on_a_big_frame():
     assert w == pytest.approx(56 / 4, abs=2)
 
 
-def test_build_engine_refuses_without_calibration(monkeypatch):
-    from wowfish.engine import engine as engine_mod
-
-    monkeypatch.setattr(engine_mod, "find_window", lambda title="World of Warcraft": WINDOW)
-    cfg = Config(game=GameConfig(), vision=VisionConfig(icon_size_px=0), audio=AudioConfig())
-    with pytest.raises(RuntimeError) as exc:
-        engine_mod.build_engine(cfg)
-    assert "wowfish calibrate --save" in str(exc.value)
-
-
 def test_build_engine_refuses_without_a_window(monkeypatch):
     from wowfish.engine import engine as engine_mod
 
@@ -387,15 +401,24 @@ def test_build_engine_refuses_without_a_window(monkeypatch):
     assert "is the game running" in str(exc.value)
 
 
-def test_build_engine_refuses_an_icon_size_below_the_floor(monkeypatch):
+def _patch_backends(monkeypatch, window):
+    import wowfish.audio.devices
+    import wowfish.input
     from wowfish.engine import engine as engine_mod
 
+    monkeypatch.setattr(engine_mod, "find_window", lambda title="World of Warcraft": window)
+    monkeypatch.setattr(engine_mod, "get_capturer", lambda: FakeCapturer())
+    monkeypatch.setattr(wowfish.input, "get_input_device", lambda: FakeInput())
+    monkeypatch.setattr(wowfish.audio.devices, "open_loopback", lambda sel="": FakeAudio())
+    return engine_mod
+
+
+def test_build_engine_ignores_a_saved_size_below_the_floor(monkeypatch):
     big = WindowRef("World of Warcraft", None, 0, 0, 4986, 2816, handle=1)
-    monkeypatch.setattr(engine_mod, "find_window", lambda title="World of Warcraft": big)
+    engine_mod = _patch_backends(monkeypatch, big)
     cfg = Config(game=GameConfig(), vision=VisionConfig(icon_size_px=19), audio=AudioConfig())
-    with pytest.raises(RuntimeError) as exc:
-        engine_mod.build_engine(cfg)
-    assert "7 px" in str(exc.value) and "calibrate" in str(exc.value)
+    eng = engine_mod.build_engine(cfg)
+    assert eng.search is None  # 19 px would be a 7 px blob here; the first cast measures instead
 
 
 def test_tracking_matches_the_crop_at_the_window_scale():
@@ -434,3 +457,105 @@ def test_build_engine_says_not_supported_off_x11_and_windows(monkeypatch):
     with pytest.raises(RuntimeError) as exc:
         engine_mod.build_engine(cfg)
     assert "DISPLAY" in str(exc.value)
+
+
+def _calibrating(**kw):
+    """An engine with no saved icon size: the first cast must measure it."""
+    cfg = Config(
+        game=GameConfig(cast_key="8", interact_key="f"),
+        vision=VisionConfig(icon_size_px=0),
+        audio=AudioConfig(),
+        run=RunConfig(pause_min_s=0.0, pause_max_s=0.0),
+    )
+    made = {}
+
+    def factory(size):
+        made["size"] = size
+        return FakeMatcher([match(0.9, 200, 150, size)])
+
+    saved = []
+    eng, d = make(
+        cfg=cfg, matcher=None, matcher_factory=factory, calibrate=kw.pop("calibrate", None),
+        on_calibrated=saved.append, **kw,
+    )  # fmt: skip
+    return eng, d, made, saved
+
+
+def test_first_cast_measures_the_icon_then_tracks_it():
+    cal = FakeCalibrate([INVALID, VALID])
+    eng, _d, made, saved = _calibrating(calibrate=cal)
+    eng.step()  # cast
+    eng.step()  # frame 1: sweep finds nothing yet
+    assert eng.state is State.CASTING and cal.calls == 1
+    eng.step()  # frame 2: sweep finds the icon
+    assert eng.state is State.WAIT_BITE and made["size"] == 58
+    assert saved == [VALID]
+    evs = drain(eng)
+    calibrated = next(e for e in evs if isinstance(e, ev.Calibrated))
+    assert calibrated.size == 58 and calibrated.score == 0.92
+    assert any(isinstance(e, ev.IconFound) and e.size == 58 for e in evs)
+
+
+def test_a_saved_size_is_tried_first_and_the_sweep_only_runs_when_it_fails():
+    cal = FakeCalibrate([VALID])
+    clock = FakeClock()
+    eng, _d = make(calibrate=cal, clock=clock)  # CFG has icon_size_px=40 and FakeMatcher hits
+    eng.step()
+    eng.step()
+    assert eng.state is State.WAIT_BITE and cal.calls == 0  # fast path found it: no sweep
+
+
+def test_saved_size_that_no_longer_matches_falls_back_to_the_sweep():
+    cal = FakeCalibrate([VALID])
+    made = {}
+
+    def factory(size):
+        made.setdefault("sizes", []).append(size)
+        return FakeMatcher([no_match() if size == 40 else match(0.9, 200, 150, size)])
+
+    eng, _d = make(
+        matcher=None, matcher_factory=factory, calibrate=cal, on_calibrated=lambda c: None
+    )
+    eng.step()
+    eng.step()
+    assert eng.state is State.WAIT_BITE and cal.calls == 1 and made["sizes"] == [40, 58]
+
+
+def test_two_icon_timeouts_in_a_row_trigger_a_fresh_sweep():
+    cal = FakeCalibrate([INVALID])
+    clock = FakeClock()
+    eng, _d = make(matcher=FakeMatcher([no_match()]), calibrate=cal, clock=clock)
+    for _ in range(2):
+        eng.step()  # cast
+        clock.t += 6.5
+        eng.step()  # icon timeout
+    before = cal.calls
+    eng.step()  # third cast
+    eng.step()  # frame: the sweep runs now
+    assert cal.calls == before + 1
+    assert eng.stats.misses == 2
+
+
+def test_the_window_is_looked_up_again_at_every_cast():
+    seen = []
+
+    def finder(title="World of Warcraft"):
+        seen.append(title)
+        return WINDOW
+
+    clock = FakeClock()
+    eng, _d = make(find_window=finder, matcher=FakeMatcher([no_match()]), clock=clock)
+    eng.step()
+    clock.t += 6.5
+    eng.step()
+    eng.step()
+    assert seen == ["World of Warcraft", "World of Warcraft"]
+
+
+def test_build_engine_no_longer_requires_a_saved_calibration(monkeypatch):
+    engine_mod = _patch_backends(monkeypatch, WINDOW)
+    cfg = Config(game=GameConfig(), vision=VisionConfig(icon_size_px=0), audio=AudioConfig())
+    eng = engine_mod.build_engine(cfg)
+    assert eng.search is None  # nothing to try first; the first cast sweeps
+    cfg = Config(game=GameConfig(), vision=VisionConfig(icon_size_px=40), audio=AudioConfig())
+    assert engine_mod.build_engine(cfg).search is not None

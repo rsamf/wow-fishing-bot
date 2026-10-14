@@ -32,6 +32,8 @@ def describe(event: ev.Event) -> str:
             return f"{did}. {nxt}."
         case ev.IconFound(score=score, where=(x, y)):
             return f"Found the bobber at ({x}, {y}), score {score:.2f}"
+        case ev.Calibrated(size=size, score=score):
+            return f"Measured the gear icon at {size} px (score {score:.2f})"
         case ev.IconLost():
             return "Lost sight of the bobber"
         case ev.BiteHeard(clip=clip, score=score):
@@ -223,9 +225,7 @@ class Presenter:
         if window is None and not problem:
             reasons.append("World of Warcraft window not found; is the game running?")
         size = self.cfg.vision.icon_size_px
-        if size <= 0:
-            reasons.append("the interact icon is not calibrated (Setup page)")
-        elif window is not None:
+        if size > 0 and window is not None:
             px = round(size * min(1.0, self.cfg.vision.match_width / window.width))
             if px < MIN_TEMPLATE_PX:
                 reasons.append("the calibrated icon is too small for this window; recalibrate")

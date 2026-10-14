@@ -2,6 +2,7 @@ import numpy as np
 
 from wowfish.engine.events import (
     BiteHeard,
+    Calibrated,
     Caught,
     Error,
     IconFound,
@@ -55,6 +56,7 @@ def test_other_event_words():
         "Paused: World of Warcraft is not the focused window"
     )
     assert describe(Resumed(9.0, State.WAIT_BITE)) == "Resumed"
+    assert describe(Calibrated(9.5, 58, 0.92)) == "Measured the gear icon at 58 px (score 0.92)"
     assert describe(Error(10.0, "boom")) == "Error: boom"
     assert describe(Stopped(11.0, "session limit")) == "Stopped (session limit)"
 

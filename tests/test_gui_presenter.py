@@ -90,8 +90,7 @@ def test_prerequisites_name_what_blocks_start():
     pres = make(find_window=lambda title="World of Warcraft": None)
     reasons = pres.prerequisites()
     assert any("World of Warcraft" in r for r in reasons)
-    assert any("calibrat" in r for r in reasons)
-    paths.config_file().write_text("[vision]\nicon_size_px = 56\n")
+    assert not any("calibrat" in r for r in reasons)  # the first cast measures the icon
     pres = make()
     assert pres.prerequisites() == []
 

@@ -7,6 +7,7 @@ import queue
 import random
 import time
 from collections.abc import Callable
+from dataclasses import replace
 from typing import Any
 
 import cv2
@@ -18,6 +19,7 @@ from wowfish.capture import Box, WindowRef, find_window, get_capturer, linux_x11
 from wowfish.config import Config
 from wowfish.engine import events as ev
 from wowfish.engine.state import State
+from wowfish.vision.matcher import IconMatch
 from wowfish.vision.region import Region
 from wowfish.vision.search import IconSearch
 
@@ -27,6 +29,7 @@ AUDIO_BLOCK = 1024
 AUDIO_MAX_S = 2.0  # never read more than this at once; the device buffer may drop older audio
 STATS_EVERY_S = 10.0
 SLEEP_SLICE_S = 0.1
+RESWEEP_AFTER_TIMEOUTS = 2  # icon timeouts in a row before the next cast measures the icon again
 
 
 class FishingEngine:
@@ -39,7 +42,11 @@ class FishingEngine:
         input_device: Any,
         audio_source: Any,
         detector: Any,
-        matcher: Any,
+        matcher: Any = None,
+        matcher_factory: Callable[[int], Any] | None = None,
+        calibrate: Callable[..., Any] | None = None,
+        on_calibrated: Callable[[Any], None] | None = None,
+        find_window: Callable[..., WindowRef | None] | None = None,
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
         rng: random.Random | None = None,
@@ -53,8 +60,19 @@ class FishingEngine:
         self.input = input_device
         self.audio = audio_source
         self.detector = detector
-        self.matcher = matcher
-        self.search = IconSearch(matcher, cfg.vision.icon_threshold)
+        self._matcher_factory = matcher_factory or (lambda size: matcher)
+        self._calibrate = calibrate or _real_calibrate
+        self._on_calibrated = on_calibrated or (lambda cal: None)
+        self._find_window = find_window
+        self.threshold = cfg.vision.icon_threshold
+        # The saved size (if any) is only a first guess: every run measures the icon on its
+        # first cast, since resolution and UI scale change the icon's size on screen.
+        self.matcher = matcher if matcher is not None else None
+        if self.matcher is None and cfg.vision.icon_size_px > 0:
+            self.matcher = self._matcher_factory(cfg.vision.icon_size_px)
+        self.search = IconSearch(self.matcher, self.threshold) if self.matcher else None
+        self._sweeping = True
+        self._icon_timeouts = 0
         self._clock = clock
         self._sleep = sleep
         self._rng = rng or random.Random()
@@ -144,6 +162,15 @@ class FishingEngine:
         self._maybe_stats(now)
 
     def _cast(self, now: float) -> None:
+        if self._find_window is not None:
+            found = self._find_window("World of Warcraft")
+            if found is not None and (found.width, found.height) != (
+                self.window.width,
+                self.window.height,
+            ):
+                self._sweeping = True  # the window changed size: measure the icon again
+            if found is not None:
+                self.window = found
         key = self.cfg.game.cast_key
         self._press(key, "cast")
         self.stats = ev.Stats(
@@ -151,7 +178,8 @@ class FishingEngine:
             self.stats.bites_heard, self._elapsed(),
         )  # fmt: skip
         self._t_cast = now
-        self.search.reset()
+        if self.search is not None:
+            self.search.reset()
         limit = self.cfg.run.icon_timeout_s
         self._change(
             State.CASTING,
@@ -161,13 +189,34 @@ class FishingEngine:
 
     def _acquire(self, now: float) -> None:
         frame = self.capturer.grab()
-        _, m = self.search.step(frame)
-        if m.accepted(self.cfg.vision.icon_threshold):
-            self._found(frame, m)
-            return
+        if self.search is not None:  # fast path: the saved or last measured size
+            _, m = self.search.step(frame)
+            if m.accepted(self.threshold):
+                self._icon_timeouts = 0
+                self._sweeping = False
+                self._found(frame, m)
+                return
+        if self._sweeping or self.search is None:
+            cal = self._calibrate(frame, match_width=self.cfg.vision.match_width)
+            if cal.valid:
+                self._use_calibration(cal)
+                self._icon_timeouts = 0
+                self._found(frame, IconMatch(cal.score, cal.x, cal.y, cal.icon_size_px, cal.gold))
+                return
         if now - self._t_cast > self.cfg.run.icon_timeout_s:
             self._emit(ev.Timeout(self._t(), "icon", self.cfg.run.icon_timeout_s))
+            self._icon_timeouts += 1
+            if self._icon_timeouts >= RESWEEP_AFTER_TIMEOUTS:
+                self._sweeping = True
             self._miss("No gear icon over the bobber")
+
+    def _use_calibration(self, cal: Any) -> None:
+        self.matcher = self._matcher_factory(cal.icon_size_px)
+        self.threshold = cal.suggested_threshold()
+        self.search = IconSearch(self.matcher, self.threshold)
+        self._sweeping = False
+        self._emit(ev.Calibrated(self._t(), int(cal.icon_size_px), float(cal.score)))
+        self._on_calibrated(cal)
 
     def _found(self, frame: np.ndarray, m: Any) -> None:
         self._icon_xy = (m.x, m.y)
@@ -245,7 +294,7 @@ class FishingEngine:
         box: Box = (x0, y0, x1 - x0, y1 - y0)
         crop = self.capturer.grab(box)
         m = self.matcher.match(crop, full_width=w)
-        if m.accepted(self.cfg.vision.icon_threshold):
+        if m.accepted(self.threshold):
             self._icon_xy = (x0 + m.x, y0 + m.y)
             self._misses = 0
             return True
@@ -344,12 +393,6 @@ def unsupported_platform() -> str:
     return "the bot is not supported yet on this platform (Linux X11/Xwayland and Windows only)"
 
 
-CALIBRATE_HINT = (
-    "run `wowfish calibrate --save` on a screenshot with the gear icon visible, or use the GUI's "
-    "Setup page"
-)
-
-
 def build_engine(
     cfg: Config, *, session_s: float | None = None, title: str = "World of Warcraft"
 ) -> FishingEngine:
@@ -371,16 +414,28 @@ def build_engine(
     window = find_window(title)
     if window is None:
         raise RuntimeError(f"no window titled {title!r}; is the game running?")
+    templates = load_icon_templates()
+
+    def matcher_factory(size: int) -> IconMatcher:
+        return IconMatcher(template_for_size(templates, size), cfg.vision.match_width)
+
     size = cfg.vision.icon_size_px
-    if size <= 0:
-        raise RuntimeError(f"the interact icon is not calibrated; {CALIBRATE_HINT}")
-    matcher = IconMatcher(template_for_size(load_icon_templates(), size), cfg.vision.match_width)
-    px = matcher.template_px(window.width)
-    if px < MIN_TEMPLATE_PX:
-        raise RuntimeError(
-            f"icon_size_px={size} is {px} px after downscaling this {window.width}-wide window "
-            f"(minimum {MIN_TEMPLATE_PX}); {CALIBRATE_HINT}"
+    if size > 0 and matcher_factory(size).template_px(window.width) < MIN_TEMPLATE_PX:
+        size = 0  # the saved size is useless for this window; the first cast measures it
+    cfg = replace(cfg, vision=replace(cfg.vision, icon_size_px=size))
+
+    def on_calibrated(cal: Any) -> None:
+        from wowfish.config import load_config, save_config
+
+        current, _ = load_config()
+        vision = replace(
+            current.vision,
+            icon_size_px=cal.icon_size_px,
+            icon_native_size=cal.native_size,
+            icon_threshold=cal.suggested_threshold(),
         )
+        save_config(replace(current, vision=vision))
+
     detector = BiteDetector(
         build_fingerprints(),
         trigger_clips=CLIP_FAMILIES[cfg.audio.bite_clip],
@@ -394,6 +449,15 @@ def build_engine(
         input_device=get_input_device(),
         audio_source=ThreadedSource(open_loopback(cfg.audio.device)),
         detector=detector,
-        matcher=matcher,
+        matcher_factory=matcher_factory,
+        on_calibrated=on_calibrated,
+        find_window=lambda t=title: find_window(t),
         session_s=session_s,
     )
+
+
+def _real_calibrate(frame: np.ndarray, *, match_width: int = 1920) -> Any:
+    from wowfish.vision.calibrate import calibrate_icon_scale
+    from wowfish.vision.template import load_icon_templates
+
+    return calibrate_icon_scale(frame, load_icon_templates(), match_width=match_width)

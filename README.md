@@ -86,15 +86,17 @@ The same steps from the terminal:
 
     wowfish doctor
     wowfish config                      # creates the config file; edit cast_key / interact_key
-    wowfish calibrate shot.png --save   # a screenshot that shows the gold gear over the bobber
     wowfish listen --record bite.wav --seconds 60   # fish one bite by hand while it records
     wowfish verify-bite bite.wav --save
-    wowfish run                         # Ctrl-C stops
+    wowfish run                         # measures the icon on its first cast; Ctrl-C stops
 
 ## Running the bot
 
 Stand at the water with the game window focused and press Start (GUI) or run `wowfish run`.
-Each cast: press the cast key, look for the gear icon for 6 s, listen for the splash for up to
+The first cast of every run measures the gear icon's on-screen size, because resolution and UI
+scale change it; a saved calibration only makes that first cast faster. If two casts in a row
+never show the icon, the next cast measures it again, so a changed resolution mid-session heals
+itself. Each cast: press the cast key, look for the gear icon for 6 s, listen for the splash for up to
 30 s, press Interact, wait up to 3 s for the bobber to disappear (Auto Loot takes the catch),
 pause a random half-second to two seconds, cast again. If the gear icon never shows or no
 splash comes, it recasts and counts a miss. If another window takes focus it pauses rather

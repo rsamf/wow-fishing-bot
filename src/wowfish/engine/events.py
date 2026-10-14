@@ -31,6 +31,12 @@ class IconFound(Event):
 
 
 @dataclass(frozen=True)
+class Calibrated(Event):
+    size: int  # icon side in window pixels, measured on this frame
+    score: float
+
+
+@dataclass(frozen=True)
 class IconLost(Event):
     pass
 
