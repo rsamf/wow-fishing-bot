@@ -18,14 +18,11 @@ class FakeCapturer:
 
 
 class FakeInput:
-    def press_key(self, key: str) -> None:
+    def press_key(self, key: str, hold_s: float = 0.06) -> None:
         pass
 
-    def move_to(self, x: int, y: int, duration_s: float) -> None:
-        pass
-
-    def click(self, button) -> None:
-        pass
+    def is_game_focused(self, window: capture.WindowRef) -> bool | None:
+        return True
 
 
 def test_fakes_satisfy_the_protocols():
@@ -67,8 +64,12 @@ def test_find_window_is_none_where_discovery_is_not_implemented(monkeypatch):
     assert capture.find_window("World of Warcraft") is None
 
 
-def test_default_input_device_is_the_stub_and_says_so():
+def test_input_device_is_the_stub_and_says_so_without_a_display(monkeypatch):
+    import sys
+
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.delenv("DISPLAY", raising=False)
     dev = wf_input.get_input_device()
     with pytest.raises(NotSupported) as exc:
         dev.press_key("1")
-    assert str(exc.value) == "wowfish does not support input injection yet."
+    assert str(exc.value) == "wowfish does not support input injection on this platform yet."

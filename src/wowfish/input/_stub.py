@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-from wowfish.errors import NotSupported
-from wowfish.input import MouseButton
+from wowfish.capture import WindowRef
+from wowfish.errors import InputUnavailable
 
 
 class StubInputDevice:
-    def press_key(self, key: str) -> None:
-        raise NotSupported("input injection")
+    def press_key(self, key: str, hold_s: float = 0.06) -> None:
+        raise InputUnavailable("input injection on this platform")
 
-    def move_to(self, x: int, y: int, duration_s: float) -> None:
-        raise NotSupported("input injection")
-
-    def click(self, button: MouseButton) -> None:
-        raise NotSupported("input injection")
+    def is_game_focused(self, window: WindowRef) -> bool | None:
+        return None

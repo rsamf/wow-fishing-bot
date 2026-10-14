@@ -1,25 +1,37 @@
-"""Keyboard and mouse boundary. Real implementations arrive with the bot runtime."""
+"""Keyboard boundary: press one key into the game and tell whether the game has focus."""
 
 from __future__ import annotations
 
-from typing import Literal, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
-MouseButton = Literal["left", "right"]
+from wowfish.capture import WindowRef, linux_x11
 
 
 @runtime_checkable
 class InputDevice(Protocol):
-    def press_key(self, key: str) -> None: ...
+    def press_key(self, key: str, hold_s: float = 0.06) -> None:
+        """Press and release a config key name (see input.keys). Raises InputUnavailable."""
+        ...
 
-    def move_to(self, x: int, y: int, duration_s: float) -> None: ...
-
-    def click(self, button: MouseButton) -> None: ...
+    def is_game_focused(self, window: WindowRef) -> bool | None:
+        """True/False when the backend can tell which window has keyboard focus, else None."""
+        ...
 
 
 def get_input_device() -> InputDevice:
+    import sys
+
+    if linux_x11():
+        from wowfish.input._x11 import X11InputDevice
+
+        return X11InputDevice()
+    if sys.platform == "win32":
+        from wowfish.input._win32 import Win32InputDevice
+
+        return Win32InputDevice()
     from wowfish.input._stub import StubInputDevice
 
     return StubInputDevice()
 
 
-__all__ = ["InputDevice", "MouseButton", "get_input_device"]
+__all__ = ["InputDevice", "get_input_device"]
