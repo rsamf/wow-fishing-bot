@@ -130,7 +130,7 @@ def find_window_x11(title_substring: str) -> WindowRef | None:
                         pid_prop = child.get_full_property(pid_atom, 0)
                         pid = int(pid_prop.value[0]) if pid_prop and pid_prop.value else None
                         ref = WindowRef(
-                            title, pid, -origin.x, -origin.y, geo.width, geo.height, child.id
+                            title, pid, origin.x, origin.y, geo.width, geo.height, child.id
                         )
                         matches.append((ref, ancestors))
                 visit(child, [*ancestors, child.id])

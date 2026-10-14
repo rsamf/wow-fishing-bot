@@ -15,7 +15,7 @@ from wowfish.commands._common import fail, load_config_or_fail
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp"}
 
 
-def _file_frames(source: Path, fps: float) -> Iterator[tuple[float, np.ndarray]]:
+def _file_frames(source: Path, fps: float) -> Iterator[tuple[float, np.ndarray, float]]:
     import cv2
 
     if source.is_dir():
@@ -28,10 +28,12 @@ def _file_frames(source: Path, fps: float) -> Iterator[tuple[float, np.ndarray]]
         frame = cv2.imread(str(p))
         if frame is None:
             fail(f"cannot read image {p}")
-        yield i / fps, frame
+        yield i / fps, frame, 0.0
 
 
-def _live_frames(title: str, fps: float, seconds: float) -> Iterator[tuple[float, np.ndarray]]:
+def _live_frames(
+    title: str, fps: float, seconds: float
+) -> Iterator[tuple[float, np.ndarray, float]]:
     from wowfish import capture
 
     window = capture.find_window(title)
@@ -59,7 +61,9 @@ def _live_frames(title: str, fps: float, seconds: float) -> Iterator[tuple[float
             t = time.perf_counter() - start
             if seconds and t >= seconds:
                 return
-            yield t, cap.grab()
+            grabbed = time.perf_counter()
+            frame = cap.grab()
+            yield t, frame, (time.perf_counter() - grabbed) * 1000
             sleep = (1.0 / fps) - (time.perf_counter() - start - t)
             if sleep > 0:
                 time.sleep(sleep)
@@ -102,21 +106,26 @@ def watch(
         save_frames.mkdir(parents=True, exist_ok=True)
     search: IconSearch | None = None
     try:
-        for i, (t, frame) in enumerate(frames):
+        for i, (t, frame, grab_ms) in enumerate(frames):
             started = time.perf_counter()
             if search is None:
                 size = cfg.vision.icon_size_px
                 if size == 0:
                     cal = calibrate_icon_scale(frame, templates, match_width=cfg.vision.match_width)
+                    if not cal.valid:
+                        typer.echo(
+                            f"t={t:7.2f}s not calibrated and no gold icon in this frame; waiting"
+                        )
+                        continue
                     size = cal.icon_size_px
                     typer.echo(
-                        f"not calibrated; using icon_size_px={size} from the first frame "
+                        f"not calibrated; using icon_size_px={size} from this frame "
                         f"(score {cal.score:.2f}); run `wowfish calibrate --save` to persist"
                     )
                 matcher = IconMatcher(template_for_size(templates, size), cfg.vision.match_width)
                 search = IconSearch(matcher, threshold)
             phase, m = search.step(frame)
-            ms = (time.perf_counter() - started) * 1000
+            ms = grab_ms + (time.perf_counter() - started) * 1000  # grab + match
             found = "FOUND" if m.accepted(threshold) else "-"
             typer.echo(
                 f"t={t:7.2f}s phase={phase:<7} score={m.score:5.2f} gold={m.gold:4.2f} "

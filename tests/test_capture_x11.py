@@ -50,6 +50,8 @@ def test_find_and_grab_our_own_window(mapped_window):
         pytest.skip("window manager did not map the test window in time")
     ref = find_window_x11("wowfish test window")
     assert ref is not None and ref.handle == win.id and (ref.width, ref.height) == (40, 30)
+    origin = _d.screen().root.translate_coords(win, 0, 0)
+    assert (ref.left, ref.top) == (origin.x, origin.y)
     cap = X11WindowCapturer()
     cap.open(ref)
     try:

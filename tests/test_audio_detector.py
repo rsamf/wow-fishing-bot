@@ -18,9 +18,7 @@ def run(detector, y, chunk=1024):
     events = []
     for i in range(0, len(y), chunk):
         part = y[i : i + chunk]
-        ev = detector.feed(AudioChunk(part, RATE, (i + len(part)) / RATE))
-        if ev:
-            events.append(ev)
+        events.extend(detector.feed(AudioChunk(part, RATE, (i + len(part)) / RATE)))
     return events
 
 
@@ -101,17 +99,19 @@ def test_level_tracks_the_last_chunk():
     assert det.level_dbfs == pytest.approx(20 * np.log10(0.5), abs=0.1)
 
 
-def test_48k_chunks_are_resampled_on_the_way_in():
-    from wowfish.audio.wav import resample
-
-    rng = np.random.default_rng(9)
-    y = mix(CLIPS["fishingbobber_1"], offset_s=2.0, snr_db=20, seconds=5, rng=rng)
-    y48 = resample(y, RATE, 48000)
+def test_a_chunk_at_another_sample_rate_is_rejected():
     det = make()
-    events = []
-    for i in range(0, len(y48), 2048):
-        part = y48[i : i + 2048]
-        ev = det.feed(AudioChunk(part, 48000, (i + len(part)) / 48000))
-        if ev:
-            events.append(ev)
-    assert len(events) == 1 and events[0].t == pytest.approx(2.0, abs=0.15)
+    with pytest.raises(ValueError, match="22050"):
+        det.feed(AudioChunk(np.zeros(2048, np.float32), 48000, 0.04))
+
+
+def test_two_bites_in_one_chunk_are_both_reported_in_time_order():
+    rng = np.random.default_rng(12)
+    c1, c2 = CLIPS["fishingbobber_2"], CLIPS["fishingbobber_1"]
+    y = mix(c1, offset_s=1.0, snr_db=20, seconds=9, rng=rng, distractor=c2, distractor_offset_s=5.5)
+    whole = run(make(), y, chunk=len(y))
+    small = run(make(), y, chunk=1024)
+    assert [e.clip for e in whole] == ["fishingbobber_2", "fishingbobber_1"]
+    assert [e.clip for e in small] == [e.clip for e in whole]
+    assert whole[0].t < whole[1].t
+    assert [round(e.t, 3) for e in small] == [round(e.t, 3) for e in whole]

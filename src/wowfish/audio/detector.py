@@ -11,7 +11,6 @@ import numpy as np
 from wowfish.audio import AudioChunk
 from wowfish.audio.features import DEFAULT_MEL, MelParams, log_mel
 from wowfish.audio.fingerprint import Fingerprint, score_sequence
-from wowfish.audio.wav import resample
 
 
 @dataclass(frozen=True)
@@ -64,11 +63,15 @@ class BiteDetector:
     def level_dbfs(self) -> float:
         return self._level_dbfs
 
-    def feed(self, chunk: AudioChunk) -> BiteEvent | None:
+    def feed(self, chunk: AudioChunk) -> list[BiteEvent]:
+        """Consume a chunk; return every bite heard in it, in time order (usually none or one)."""
         p = self.p
-        samples = np.asarray(chunk.samples, dtype=np.float32)
         if chunk.sample_rate != p.sample_rate:
-            samples = resample(samples, chunk.sample_rate, p.sample_rate)
+            raise ValueError(
+                f"chunk sample rate {chunk.sample_rate} != {p.sample_rate}; "
+                "resample in the source, not per chunk"
+            )
+        samples = np.asarray(chunk.samples, dtype=np.float32)
         if len(samples):
             rms = float(np.sqrt(np.mean(samples * samples)))
             self._level_dbfs = 20.0 * math.log10(rms + 1e-9)
@@ -76,23 +79,32 @@ class BiteDetector:
         n_new = p.frames_for(len(buf))
         if n_new == 0:
             self._pending = buf
-            return None
+            return []
         new = log_mel(buf[: (n_new - 1) * p.hop + p.n_fft], p)
         self._pending = buf[n_new * p.hop :]
         feats = np.concatenate([self._feats, new])
         self._frames_total += n_new
 
-        event: BiteEvent | None = None
+        # scores[name][j] for the j-th new frame (NaN where fewer than L frames exist yet)
+        per_clip: dict[str, np.ndarray] = {}
         for fp in self.fingerprints:
-            length = fp.length
-            avail = min(n_new, len(feats) - length + 1)
-            if avail <= 0:
-                continue
-            scores = score_sequence(feats[-(avail + length - 1) :], fp)[length - 1 :]
-            for j, score in enumerate(scores.tolist()):
-                frame = self._frames_total - avail + j  # global index of the window's last frame
-                t_end = (frame * p.hop + p.n_fft) / p.sample_rate
-                t_onset = t_end - length * p.hop / p.sample_rate
+            avail = min(n_new, len(feats) - fp.length + 1)
+            col = np.full(n_new, np.nan, dtype=np.float32)
+            if avail > 0:
+                col[n_new - avail :] = score_sequence(feats[-(avail + fp.length - 1) :], fp)[
+                    fp.length - 1 :
+                ]
+            per_clip[fp.name] = col
+
+        events: list[BiteEvent] = []
+        for j in range(n_new):
+            frame = self._frames_total - n_new + j  # global index of the window's last frame
+            t_end = (frame * p.hop + p.n_fft) / p.sample_rate
+            for fp in self.fingerprints:
+                score = float(per_clip[fp.name][j])
+                if math.isnan(score):
+                    continue
+                t_onset = t_end - fp.length * p.hop / p.sample_rate
                 self._scores[fp.name] = ClipScore(fp.name, score, t_onset)
                 if score < self.threshold:
                     self._run[fp.name] = 0
@@ -104,10 +116,9 @@ class BiteDetector:
                     fp.name in self.trigger
                     and self._run[fp.name] == self.min_consecutive
                     and t_end >= self._quiet_until
-                    and event is None
                 )
                 if fires:
-                    event = BiteEvent(fp.name, self._run_peak[fp.name], t_onset)
+                    events.append(BiteEvent(fp.name, self._run_peak[fp.name], t_onset))
                     self._quiet_until = t_end + self.refractory_s
         self._feats = feats[-(2 * self._max_len) :]
-        return event
+        return events

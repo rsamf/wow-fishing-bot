@@ -160,3 +160,29 @@ def test_watch_live_without_the_game_fails_cleanly_on_linux(cli_runner, monkeypa
     result = cli_runner.invoke(app, ["watch", "--live", "--seconds", "1"])
     assert result.exit_code == 1 and "is the game running" in result.output
     assert "Traceback" not in result.output
+
+
+def test_calibrate_refuses_to_save_without_a_gold_icon(cli_runner, tmp_path):
+    from tests.synth_vision import grey_icon_rgba
+
+    frame = water_background(1920, 1080, np.random.default_rng(20))
+    paste_icon(frame, grey_icon_rgba(), 48, 900, 400)
+    p = tmp_path / "grey.png"
+    cv2.imwrite(str(p), frame)
+    result = cli_runner.invoke(app, ["calibrate", str(p), "--save"])
+    assert result.exit_code == 1 and "not saved" in result.output
+    assert load_config()[0].vision.icon_size_px == 0
+
+
+def test_watch_waits_for_an_icon_before_self_calibrating(cli_runner, tmp_path):
+    d = tmp_path / "frames"
+    d.mkdir()
+    cv2.imwrite(str(d / "f0.png"), water_background(1920, 1080, np.random.default_rng(21)))
+    frame = water_background(1920, 1080, np.random.default_rng(22))
+    paste_icon(frame, icon_rgba(), 48, 900, 400)
+    cv2.imwrite(str(d / "f1.png"), frame)
+    result = cli_runner.invoke(app, ["watch", "--from", str(d)])
+    assert result.exit_code == 0, result.output
+    assert "waiting" in result.output
+    assert "FOUND" in result.output
+    assert "icon_size_px=127" not in result.output

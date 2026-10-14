@@ -83,8 +83,7 @@ def listen(
                 t_end = frames_read / source.sample_rate
                 if record is not None:
                     recorded.append(samples)
-                event = detector.feed(AudioChunk(samples, source.sample_rate, t_end))
-                if event:
+                for event in detector.feed(AudioChunk(samples, source.sample_rate, t_end)):
                     typer.echo(f"BITE {event.clip} score={event.score:.2f} at {event.t:.2f}s")
                 if t_end >= next_report:
                     scores = " ".join(f"{s.name}={s.score:4.2f}" for s in detector.last_scores)

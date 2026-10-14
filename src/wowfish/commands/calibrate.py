@@ -38,10 +38,15 @@ def calibrate(
     )
     threshold = cal.suggested_threshold()
     typer.echo(f"suggested icon_threshold={threshold:.2f}")
-    if cal.score < 0.6:
+    if not cal.valid:
         typer.echo(
-            "warning: low score; is the gold interact icon visible in this screenshot?", err=True
+            "warning: no gold interact icon found in this screenshot (take it with the bobber in "
+            "range, gear icon visible)",
+            err=True,
         )
+        if save:
+            typer.echo("not saved", err=True)
+            raise typer.Exit(code=1)
     if save:
         vision = replace(
             cfg.vision,

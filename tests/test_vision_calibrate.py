@@ -59,3 +59,18 @@ def test_full_real_frame_with_ui_calibrates_to_the_icon():
     cal = calibrate_icon_scale(frame, TEMPLATES)
     assert 52 <= cal.icon_size_px <= 60 and cal.native_size == 79
     assert abs(cal.x - 1575) <= 6 and abs(cal.y - 457) <= 6
+
+
+def test_calibration_reports_gold_and_validity():
+    frame = water_background(1920, 1080, np.random.default_rng(3))
+    paste_icon(frame, icon_rgba(), 40, 700, 400)
+    good = calibrate_icon_scale(frame, TEMPLATES)
+    assert good.valid and good.gold >= 0.12
+    from tests.synth_vision import grey_icon_rgba
+
+    grey = water_background(1920, 1080, np.random.default_rng(4))
+    paste_icon(grey, grey_icon_rgba(), 40, 700, 400)
+    bad = calibrate_icon_scale(grey, TEMPLATES)
+    assert not bad.valid
+    empty = calibrate_icon_scale(water_background(1920, 1080, np.random.default_rng(5)), TEMPLATES)
+    assert not empty.valid

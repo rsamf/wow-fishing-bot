@@ -15,6 +15,7 @@ PROBE_SIZES: tuple[int, ...] = (20, 32, 48, 72, 104)
 MIN_SIZE = 18  # below this the gear is a blob; 1080p draws it at ~21 px, 720p is out of scope
 SIZE_PENALTY = 1.0  # chance-level correction: tiny templates score high on any gold ring
 ANCHORS = 3
+MIN_VALID_SCORE = 0.6
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,12 @@ class Calibration:
     score: float
     x: int
     y: int
+    gold: float = 0.0
+
+    @property
+    def valid(self) -> bool:
+        """A gold icon was actually found; otherwise the numbers are the best of nothing."""
+        return self.gold >= GOLD_MIN and self.score >= MIN_VALID_SCORE
 
     def suggested_threshold(self) -> float:
         return float(min(0.9, max(0.6, round(self.score - 0.10, 2))))
@@ -83,4 +90,4 @@ def calibrate_icon_scale(
                 best_side, best, best_key = side, m, key
     assert best is not None
     native = template_for_size(templates, best_side).native_size
-    return Calibration(best_side, native, best.score, best.x, best.y)
+    return Calibration(best_side, native, best.score, best.x, best.y, best.gold)
