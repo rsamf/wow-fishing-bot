@@ -27,6 +27,9 @@ class MelParams:
         return 1 + (n_samples - self.n_fft) // self.hop
 
 
+DEFAULT_MEL = MelParams()
+
+
 def _hz_to_mel(f: np.ndarray | float) -> np.ndarray | float:
     return 2595.0 * np.log10(1.0 + np.asarray(f) / 700.0)
 
