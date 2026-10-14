@@ -39,11 +39,15 @@ def linux_x11() -> bool:
 
 
 def find_window(title_substring: str = "World of Warcraft") -> WindowRef | None:
-    """The largest viewable window whose title contains the text. Linux/X11 only for now."""
+    """The largest viewable window whose title contains the text (X11, Windows; else None)."""
     if linux_x11():
         from wowfish.capture._x11 import find_window_x11
 
         return find_window_x11(title_substring)
+    if sys.platform == "win32":
+        from wowfish.capture import _win32
+
+        return _win32.find_window_win32(title_substring)
     return None
 
 

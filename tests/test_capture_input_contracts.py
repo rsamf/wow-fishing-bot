@@ -60,7 +60,8 @@ def test_stub_capturer_when_no_backend_is_available(monkeypatch):
 def test_find_window_is_none_where_discovery_is_not_implemented(monkeypatch):
     import sys
 
-    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.delenv("DISPLAY", raising=False)
     assert capture.find_window("World of Warcraft") is None
 
 
