@@ -111,3 +111,17 @@ def test_template_below_the_match_space_floor_is_no_match():
     small = _frame(1920, 1080, 18, 700, 400)  # no downscale: 18 px is above the floor
     m = IconMatcher(template_for_size(TEMPLATES, 18), match_width=1920).match(small)
     assert m.score >= 0.75 and abs(m.x - 700) <= 2 and abs(m.y - 400) <= 2
+
+
+def test_a_crop_matched_with_the_full_width_scores_like_the_full_frame():
+    """Tracking grabs only a box; it must be scored at the same downscale as the acquire pass."""
+    frame = _frame(4986, 2816, 56, 2600, 1300)
+    matcher = IconMatcher(template_for_size(TEMPLATES, 56), match_width=1920)
+    whole = matcher.match(frame)
+    x0, y0 = 2600 - 400, 1300 - 250
+    crop = frame[y0 : y0 + 500, x0 : x0 + 800]
+    part = matcher.match(crop, full_width=4986)
+    assert abs(part.score - whole.score) < 0.03
+    assert abs(x0 + part.x - whole.x) <= 4 and abs(y0 + part.y - whole.y) <= 4
+    native = matcher.match(crop)  # without the hint the 56 px template is used at native scale
+    assert native.size == part.size and matcher.template_px(4986) < 30

@@ -65,7 +65,7 @@ class Paused(Event):
 
 @dataclass(frozen=True)
 class Resumed(Event):
-    pass
+    state: State  # the state the engine went back to
 
 
 @dataclass(frozen=True)

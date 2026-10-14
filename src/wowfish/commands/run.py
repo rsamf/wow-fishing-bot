@@ -7,10 +7,12 @@ import time
 
 import typer
 
+from wowfish.audio import AudioUnavailable
 from wowfish.commands._common import fail, load_config_or_fail
 from wowfish.engine import events as ev
 from wowfish.engine.engine import build_engine
 from wowfish.engine.thread import EngineThread
+from wowfish.errors import NotSupported
 from wowfish.gui.presenter import describe
 
 
@@ -28,7 +30,7 @@ def run(
     cfg = load_config_or_fail()
     try:
         engine = build_engine(cfg, session_s=minutes * 60 if minutes else None, title=title)
-    except RuntimeError as e:
+    except (RuntimeError, NotSupported, AudioUnavailable) as e:
         fail(str(e))
     thread = EngineThread(engine)
     thread.start()

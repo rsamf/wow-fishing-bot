@@ -156,6 +156,7 @@ class Presenter:
         self.next = "Press Start when the game is at the water"
         self.stats = ev.Stats(0.0).as_line()
         self.thumbnail_png: bytes | None = None
+        self._before_pause: tuple[str, str, str] | None = None
         self.last_calibration: CalibrateDone | None = None
         self.last_report: VerifyDone | None = None
 
@@ -211,11 +212,15 @@ class Presenter:
 
     def prerequisites(self) -> list[str]:
         """What blocks Start, in plain words; empty when the bot can run."""
+        from wowfish.engine.engine import unsupported_platform
         from wowfish.vision.matcher import MIN_TEMPLATE_PX
 
         reasons: list[str] = []
+        problem = unsupported_platform()
+        if problem:
+            reasons.append(problem)
         window = self._find_window("World of Warcraft")
-        if window is None:
+        if window is None and not problem:
             reasons.append("World of Warcraft window not found; is the game running?")
         size = self.cfg.vision.icon_size_px
         if size <= 0:
@@ -295,7 +300,14 @@ class Presenter:
             case ev.Stats():
                 self.stats = event.as_line()
             case ev.Paused(reason=reason):
+                self._before_pause = (self.state, self.did, self.next)
                 self.state, self.did, self.next = State.PAUSED.name, f"Paused: {reason}", "Waiting"
+            case ev.Resumed(state=state):
+                if self._before_pause is not None and self._before_pause[0] == state.name:
+                    self.state, self.did, self.next = self._before_pause
+                else:
+                    self.state, self.did, self.next = state.name, "Resumed", "Carrying on"
+                self._before_pause = None
             case ev.Stopped(reason=reason):
                 self.state, self.did, self.next = State.STOPPED.name, f"Stopped ({reason})", "Idle"
             case ev.Error(message=message):

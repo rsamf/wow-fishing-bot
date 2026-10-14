@@ -98,7 +98,7 @@ class FakeMatcher:
 
     def __init__(self, script: list[IconMatch] | None = None, size: int = 40) -> None:
         self.script = script or [match()]
-        self.calls: list[tuple[tuple[int, int], object]] = []  # (frame shape, region)
+        self.calls: list[tuple[tuple[int, int], object, dict]] = []  # (shape, region, kwargs)
         self.size = size
 
     class _T:
@@ -112,8 +112,8 @@ class FakeMatcher:
     def template_px(self, width: int) -> int:
         return self.size
 
-    def match(self, frame, region=None) -> IconMatch:
-        self.calls.append((frame.shape[:2], region))
+    def match(self, frame, region=None, **kwargs) -> IconMatch:
+        self.calls.append((frame.shape[:2], region, dict(kwargs)))
         i = min(len(self.calls) - 1, len(self.script) - 1)
         return self.script[i]
 

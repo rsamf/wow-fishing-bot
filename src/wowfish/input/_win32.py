@@ -43,6 +43,11 @@ def _user32() -> ctypes.WinDLL:  # type: ignore[name-defined]
 class Win32InputDevice:
     def __init__(self) -> None:
         self._u = _user32()
+        self._u.GetForegroundWindow.restype = wintypes.HWND  # unsigned: handles can have bit 31 set
+        self._u.MapVirtualKeyW.argtypes = [wintypes.UINT, wintypes.UINT]
+        self._u.MapVirtualKeyW.restype = wintypes.UINT
+        self._u.SendInput.argtypes = [wintypes.UINT, ctypes.c_void_p, ctypes.c_int]
+        self._u.SendInput.restype = wintypes.UINT
 
     def close(self) -> None:
         pass

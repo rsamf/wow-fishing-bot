@@ -199,7 +199,7 @@ def test_box_grab_used_while_tracking():
     assert box is not None
     x, y, w, h = box
     assert x < 200 < x + w and y < 150 < y + h and w < 400
-    (shape, region) = d["matcher"].calls[-1]
+    (shape, region, _kw) = d["matcher"].calls[-1]
     assert shape == (h, w) and region is None
 
 
@@ -396,3 +396,41 @@ def test_build_engine_refuses_an_icon_size_below_the_floor(monkeypatch):
     with pytest.raises(RuntimeError) as exc:
         engine_mod.build_engine(cfg)
     assert "7 px" in str(exc.value) and "calibrate" in str(exc.value)
+
+
+def test_tracking_matches_the_crop_at_the_window_scale():
+    big = WindowRef("World of Warcraft", None, 0, 0, 4986, 2816, handle=1)
+    clock = FakeClock()
+    eng, d = make(clock=clock)
+    eng.window = big
+    eng.step()
+    eng.step()
+    clock.t += 0.3
+    eng.step()
+    _shape, _region, kwargs = d["matcher"].calls[-1]
+    assert kwargs.get("full_width") == 4986
+
+
+def test_resumed_carries_the_state_it_returns_to():
+    eng, _d = _to_wait_bite(input_device=FakeInput([True, True, False, True, True]))
+    eng.step()
+    eng.step()
+    resumed = next(e for e in drain(eng) if isinstance(e, ev.Resumed))
+    assert resumed.state is State.WAIT_BITE
+
+
+def test_build_engine_says_not_supported_off_x11_and_windows(monkeypatch):
+    import sys
+
+    from wowfish.engine import engine as engine_mod
+
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.delenv("DISPLAY", raising=False)
+    cfg = Config(game=GameConfig(), vision=VisionConfig(icon_size_px=40), audio=AudioConfig())
+    with pytest.raises(RuntimeError) as exc:
+        engine_mod.build_engine(cfg)
+    assert "not supported yet" in str(exc.value)
+    monkeypatch.setattr(sys, "platform", "linux")
+    with pytest.raises(RuntimeError) as exc:
+        engine_mod.build_engine(cfg)
+    assert "DISPLAY" in str(exc.value)

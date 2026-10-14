@@ -42,3 +42,56 @@ def test_iter_chunks_counts_time(tmp_path):
         if src.exhausted:
             break
     assert len(chunks) == 5 and chunks[-1].t_end == 0.5 and chunks[-1].sample_rate == 22050
+
+
+class _SlowSource:
+    """Blocks like a real device: `read(n)` returns n frames after n/rate seconds."""
+
+    sample_rate = 22050
+
+    def __init__(self):
+        self.entered = self.exited = 0
+        self.total = 0
+
+    def __enter__(self):
+        self.entered += 1
+        return self
+
+    def __exit__(self, *exc):
+        self.exited += 1
+
+    def read(self, n):
+        import time
+
+        time.sleep(n / self.sample_rate)
+        self.total += n
+        return np.full(n, 0.25, dtype=np.float32)
+
+
+def test_threaded_source_never_blocks_the_caller_and_keeps_order():
+    import time
+
+    from wowfish.audio._threaded import ThreadedSource
+
+    inner = _SlowSource()
+    with ThreadedSource(inner, block=1024) as src:
+        assert src.sample_rate == 22050
+        t0 = time.monotonic()
+        first = src.read(22050)  # a second's worth requested; nothing may be ready yet
+        assert time.monotonic() - t0 < 0.05 and len(first) <= 22050
+        time.sleep(0.3)
+        got = src.read(4096)
+        assert 1024 <= len(got) <= 4096 and float(got.mean()) == 0.25
+        assert inner.entered == 1
+    assert inner.exited == 1
+
+
+def test_threaded_source_caps_its_backlog():
+    import time
+
+    from wowfish.audio._threaded import ThreadedSource
+
+    inner = _SlowSource()
+    with ThreadedSource(inner, block=1024, max_s=0.2) as src:
+        time.sleep(0.6)
+        assert len(src.read(10 * 22050)) <= int(0.2 * 22050) + 1024

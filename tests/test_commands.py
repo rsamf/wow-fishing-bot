@@ -240,3 +240,24 @@ def test_run_prints_events_until_the_engine_stops(cli_runner, monkeypatch):
     assert "Pressed 8 to cast" in result.output
     assert "Stopped (session limit)" in result.output
     assert "casts 1," in result.output.splitlines()[-1]
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        AudioUnavailable("no loopback devices found"),
+        __import__("wowfish.errors", fromlist=["InputUnavailable"]).InputUnavailable("X11 input"),
+    ],
+)
+def test_run_reports_audio_and_input_failures_without_a_traceback(cli_runner, monkeypatch, exc):
+    from wowfish.commands import run as run_cmd
+
+    def boom(cfg, session_s=None, title="World of Warcraft"):
+        raise exc
+
+    monkeypatch.setattr(run_cmd, "build_engine", boom)
+    result = cli_runner.invoke(app, ["run"])
+    assert (result.exit_code == 1 and result.exception is None) or isinstance(
+        result.exception, SystemExit
+    )
+    assert "error:" in result.output and str(exc).split("(")[0].strip() in result.output

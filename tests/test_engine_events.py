@@ -54,7 +54,7 @@ def test_other_event_words():
     assert describe(Paused(8.0, "World of Warcraft is not the focused window")) == (
         "Paused: World of Warcraft is not the focused window"
     )
-    assert describe(Resumed(9.0)) == "Resumed"
+    assert describe(Resumed(9.0, State.WAIT_BITE)) == "Resumed"
     assert describe(Error(10.0, "boom")) == "Error: boom"
     assert describe(Stopped(11.0, "session limit")) == "Stopped (session limit)"
 

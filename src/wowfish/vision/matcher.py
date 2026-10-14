@@ -45,16 +45,21 @@ class IconMatcher:
         """Template side in match-space pixels for a frame this wide (after any downscale)."""
         return round(self.template.size * min(1.0, self.match_width / frame_width))
 
-    def match(self, frame_bgr: np.ndarray, region: Region | None = None) -> IconMatch:
+    def match(
+        self, frame_bgr: np.ndarray, region: Region | None = None, *, full_width: int | None = None
+    ) -> IconMatch:
+        """Best match in `frame_bgr` (or its `region`). Pass `full_width` when `frame_bgr` is a
+        crop of a wider window so it is downscaled exactly as the whole window would be."""
         if frame_bgr.ndim != 3 or frame_bgr.shape[2] != 3:
             raise ValueError("frame must be HxWx3 BGR")
         h, w = frame_bgr.shape[:2]
-        tsize = self.template_px(w)
+        ref_w = full_width or w
+        tsize = self.template_px(ref_w)
         if tsize < MIN_TEMPLATE_PX:
             return IconMatch(NO_MATCH, -1, -1, self.template.size, 0.0)
         x0, y0, x1, y1 = (region or FULL).to_box(w, h)
         crop = np.ascontiguousarray(frame_bgr[y0:y1, x0:x1])
-        scale = min(1.0, self.match_width / w)
+        scale = min(1.0, self.match_width / ref_w)
         if scale < 1.0:
             size = (max(1, round(crop.shape[1] * scale)), max(1, round(crop.shape[0] * scale)))
             crop = cv2.resize(crop, size, interpolation=cv2.INTER_AREA)

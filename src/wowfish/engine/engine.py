@@ -13,7 +13,8 @@ import cv2
 import numpy as np
 
 from wowfish.audio import AudioChunk
-from wowfish.capture import Box, WindowRef, find_window, get_capturer
+from wowfish.audio._threaded import ThreadedSource
+from wowfish.capture import Box, WindowRef, find_window, get_capturer, linux_x11
 from wowfish.config import Config
 from wowfish.engine import events as ev
 from wowfish.engine.state import State
@@ -124,7 +125,7 @@ class FishingEngine:
             return
         if self.state is State.PAUSED:
             self.state = self._resume_state
-            self._emit(ev.Resumed(self._t()))
+            self._emit(ev.Resumed(self._t(), self.state))
 
         chunks = self._drain_audio(now)
         bites = []
@@ -243,7 +244,7 @@ class FishingEngine:
         x0, y0, x1, y1 = Region.around(x, y, w, h, 0.10).to_box(w, h)
         box: Box = (x0, y0, x1 - x0, y1 - y0)
         crop = self.capturer.grab(box)
-        m = self.matcher.match(crop)
+        m = self.matcher.match(crop, full_width=w)
         if m.accepted(self.cfg.vision.icon_threshold):
             self._icon_xy = (x0 + m.x, y0 + m.y)
             self._misses = 0
@@ -331,6 +332,18 @@ def _thumbnail(frame: np.ndarray, x: int, y: int, size: int) -> tuple[np.ndarray
     return thumb, (bx, by, side, side)
 
 
+def unsupported_platform() -> str:
+    """Why the bot cannot run here, or "" when it can (X11/Xwayland on Linux, or Windows)."""
+    import os
+    import sys
+
+    if sys.platform == "win32" or linux_x11():
+        return ""
+    if sys.platform == "linux" and not os.environ.get("DISPLAY"):
+        return "DISPLAY is not set; the bot needs X11 or Xwayland (log into a session with one)"
+    return "the bot is not supported yet on this platform (Linux X11/Xwayland and Windows only)"
+
+
 CALIBRATE_HINT = (
     "run `wowfish calibrate --save` on a screenshot with the gear icon visible, or use the GUI's "
     "Setup page"
@@ -352,6 +365,9 @@ def build_engine(
     from wowfish.vision.matcher import MIN_TEMPLATE_PX, IconMatcher
     from wowfish.vision.template import load_icon_templates, template_for_size
 
+    platform_problem = unsupported_platform()
+    if platform_problem:
+        raise RuntimeError(platform_problem)
     window = find_window(title)
     if window is None:
         raise RuntimeError(f"no window titled {title!r}; is the game running?")
@@ -376,7 +392,7 @@ def build_engine(
         window,
         capturer=get_capturer(),
         input_device=get_input_device(),
-        audio_source=open_loopback(cfg.audio.device),
+        audio_source=ThreadedSource(open_loopback(cfg.audio.device)),
         detector=detector,
         matcher=matcher,
         session_s=session_s,

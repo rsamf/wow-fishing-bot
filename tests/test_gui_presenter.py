@@ -176,3 +176,24 @@ def test_start_failure_is_reported_not_raised():
     view = pres.poll()
     assert any("is the game running" in line for line in view.new_lines)
     assert not pres.running
+
+
+def test_resumed_restores_the_state_badge():
+    from wowfish.engine import events as ev
+    from wowfish.engine.state import State
+
+    pres = make()
+    pres._apply(ev.StateChanged(1.0, State.WAIT_BITE, "Found the bobber at (1, 2)", "Waiting"))
+    pres._apply(ev.Paused(2.0, "World of Warcraft is not the focused window"))
+    assert pres.state == "PAUSED"
+    pres._apply(ev.Resumed(3.0, State.WAIT_BITE))
+    assert pres.state == "WAIT_BITE" and pres.did == "Found the bobber at (1, 2)"
+
+
+def test_prerequisites_say_not_supported_off_x11_and_windows(monkeypatch):
+    import sys
+
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.delenv("DISPLAY", raising=False)
+    pres = make(find_window=lambda title="World of Warcraft": None)
+    assert any("not supported yet" in r for r in pres.prerequisites())
