@@ -10,7 +10,7 @@ class StubCapturer:
     def open(self, window: WindowRef) -> None:
         raise NotSupported("screen capture")
 
-    def grab(self) -> np.ndarray:
+    def grab(self, box=None) -> np.ndarray:
         raise NotSupported("screen capture")
 
     def close(self) -> None:

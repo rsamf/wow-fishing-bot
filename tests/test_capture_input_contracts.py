@@ -10,7 +10,7 @@ class FakeCapturer:
     def open(self, window: capture.WindowRef) -> None:
         self.window = window
 
-    def grab(self) -> np.ndarray:
+    def grab(self, box=None) -> np.ndarray:
         return np.zeros((2, 2, 3), dtype=np.uint8)
 
     def close(self) -> None:
@@ -43,11 +43,28 @@ def test_window_ref_is_a_plain_frozen_record():
         w.title = "x"  # type: ignore[misc]
 
 
-def test_default_capturer_is_the_stub_and_says_so():
+def test_window_ref_handle_defaults_to_none():
+    w = capture.WindowRef("t", None, 0, 0, 1, 1)
+    assert w.handle is None
+
+
+def test_stub_capturer_when_no_backend_is_available(monkeypatch):
+    import sys
+
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.delenv("DISPLAY", raising=False)
+    monkeypatch.setitem(sys.modules, "mss", None)
     cap = capture.get_capturer()
     with pytest.raises(NotSupported) as exc:
         cap.open(capture.WindowRef("t", None, 0, 0, 1, 1))
     assert str(exc.value) == "wowfish does not support screen capture yet."
+
+
+def test_find_window_is_none_where_discovery_is_not_implemented(monkeypatch):
+    import sys
+
+    monkeypatch.setattr(sys, "platform", "win32")
+    assert capture.find_window("World of Warcraft") is None
 
 
 def test_default_input_device_is_the_stub_and_says_so():
