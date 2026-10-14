@@ -11,23 +11,39 @@ from typing import Any
 import tomli_w
 
 from wowfish import paths
+from wowfish.assets import CLIP_FAMILIES
 
 DEFAULT_CONFIG_TEXT = """# wowfish configuration. Delete any line to go back to its default.
 
 [game]
 # Keybind for the Fishing ability on your action bar.
 cast_key = "1"
+# Keybind for Interact With Target (Options > Keybindings > Targeting).
+interact_key = "f"
 # Stop fishing after this many minutes.
 session_minutes = 60
 
-[models]
-# Development only: override the model revision pinned into this build.
-# revision = "main"
+[vision]
+# On-screen size of the interact icon in pixels. 0 = not calibrated; `wowfish calibrate` sets it.
+icon_size_px = 0
+icon_native_size = 0
+# Minimum match score (0..1) to accept the icon.
+icon_threshold = 0.75
+# Frames wider than this are downscaled before matching.
+match_width = 1920
+
+[audio]
+# Loopback device id or name substring. Empty = monitor of the default output.
+device = ""
+# Which clip family counts as the bite: "fishingbobber" or "fishbite".
+bite_clip = "fishingbobber"
+# Minimum correlation (0..1) with the clip onset to count as a bite.
+bite_threshold = 0.7
+# Ignore further bites for this many seconds after one fires.
+refractory_s = 3.0
 """
 
 _LINE_RE = re.compile(r"\(at line (\d+), column \d+\)")
-# Commit hashes, tags, and simple branch names. Used as a path component, so no separators.
-_REVISION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 class ConfigError(Exception):
@@ -45,21 +61,34 @@ class ConfigError(Exception):
 @dataclass(frozen=True)
 class GameConfig:
     cast_key: str = "1"
+    interact_key: str = "f"
     session_minutes: int = 60
 
 
 @dataclass(frozen=True)
-class ModelsConfig:
-    revision: str | None = None
+class VisionConfig:
+    icon_size_px: int = 0
+    icon_native_size: int = 0
+    icon_threshold: float = 0.75
+    match_width: int = 1920
+
+
+@dataclass(frozen=True)
+class AudioConfig:
+    device: str = ""
+    bite_clip: str = "fishingbobber"
+    bite_threshold: float = 0.7
+    refractory_s: float = 3.0
 
 
 @dataclass(frozen=True)
 class Config:
     game: GameConfig
-    models: ModelsConfig
+    vision: VisionConfig
+    audio: AudioConfig
 
 
-_SECTIONS: dict[str, type] = {"game": GameConfig, "models": ModelsConfig}
+_SECTIONS: dict[str, type] = {"game": GameConfig, "vision": VisionConfig, "audio": AudioConfig}
 
 
 def ensure_config_file(path: Path | None = None) -> bool:
@@ -73,7 +102,7 @@ def ensure_config_file(path: Path | None = None) -> bool:
 def load_config(path: Path | None = None) -> tuple[Config, list[str]]:
     path = path or paths.config_file()
     if not path.exists():
-        return Config(game=GameConfig(), models=ModelsConfig()), []
+        return Config(game=GameConfig(), vision=VisionConfig(), audio=AudioConfig()), []
     try:
         raw = tomllib.loads(path.read_text())
     except tomllib.TOMLDecodeError as e:
@@ -90,12 +119,13 @@ def load_config(path: Path | None = None) -> tuple[Config, list[str]]:
     for leftover in raw:
         warnings.append(f"unknown section [{leftover}] ignored")
     cfg = Config(**built)
-    rev = cfg.models.revision
-    if rev is not None and not _REVISION_RE.match(rev):
-        raise ConfigError(
-            path, f"models.revision must be a commit hash, tag, or simple branch name, got {rev!r}"
-        )
+    _validate(path, cfg)
     return cfg, warnings
+
+
+def save_config(cfg: Config, path: Path | None = None) -> None:
+    path = path or paths.config_file()
+    path.write_text(to_toml(cfg))
 
 
 def _build_section(
@@ -108,6 +138,8 @@ def _build_section(
             warnings.append(f"unknown key {section}.{key} ignored")
             continue
         expected = _expected_type(known[key].type)
+        if expected is float and isinstance(value, int) and not isinstance(value, bool):
+            value = float(value)
         if not isinstance(value, expected) or (expected is int and isinstance(value, bool)):
             raise ConfigError(
                 path, f"{section}.{key} must be {expected.__name__}, got {type(value).__name__}"
@@ -123,7 +155,21 @@ def _expected_type(annotation: Any) -> type:
     return {"str": str, "int": int, "bool": bool, "float": float}[base]
 
 
+def _validate(path: Path, cfg: Config) -> None:
+    def check(ok: bool, key: str, rule: str) -> None:
+        if not ok:
+            raise ConfigError(path, f"{key} {rule}")
+
+    v, a = cfg.vision, cfg.audio
+    check(0.0 < v.icon_threshold <= 1.0, "vision.icon_threshold", "must be in (0, 1]")
+    check(v.match_width >= 320, "vision.match_width", "must be at least 320")
+    check(v.icon_size_px >= 0, "vision.icon_size_px", "must be 0 or positive")
+    check(v.icon_native_size >= 0, "vision.icon_native_size", "must be 0 or positive")
+    check(0.0 < a.bite_threshold <= 1.0, "audio.bite_threshold", "must be in (0, 1]")
+    check(a.refractory_s >= 0.0, "audio.refractory_s", "must be 0 or positive")
+    families = ", ".join(CLIP_FAMILIES)
+    check(a.bite_clip in CLIP_FAMILIES, "audio.bite_clip", f"must be one of: {families}")
+
+
 def to_toml(cfg: Config) -> str:
-    data = asdict(cfg)
-    data["models"] = {k: v for k, v in data["models"].items() if v is not None}
-    return tomli_w.dumps(data)
+    return tomli_w.dumps(asdict(cfg))
