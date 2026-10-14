@@ -1,9 +1,10 @@
 # wow-fishing-forever
 
-A vision-based fishing bot for **World of Warcraft: Forever**, successor to the 2019
-[wow-fishing-bot](https://github.com/rsamf/wow-fishing-forever/tree/60d0710). It watches
-the game window, finds the bobber with a small neural network, waits for the splash, and
-reels in. No template images to capture, no screen regions to draw, no coordinates to set.
+A fishing bot for **World of Warcraft: Forever**, successor to the 2019
+[wow-fishing-bot](https://github.com/rsamf/wow-fishing-forever/tree/60d0710). It watches the
+game window for the built-in interact icon over your bobber, listens to the game's own splash
+sound for the bite, and presses your Interact key. No template images to capture, no screen
+regions to draw, no coordinates to set.
 
 > **Use at your own risk.** Automating gameplay violates Blizzard's terms of service and can
 > get your account banned. This project exists as a computer vision exercise. Nothing here
@@ -11,9 +12,9 @@ reels in. No template images to capture, no screen regions to draw, no coordinat
 
 ## Status
 
-**Alpha.** This release ships the installer, the `wowfish doctor` environment check, config
-handling, and model download. Fishing itself lands in a later release once the detection
-models are trained on Forever footage. Follow the releases page for progress.
+**Alpha.** This release ships the detection core: icon calibration, the live watcher, the
+audio bite detector, and the environment check. The fishing loop and the desktop GUI land in
+the next releases. Follow the releases page for progress.
 
 ## Install
 
@@ -53,22 +54,44 @@ or clone and run in place:
 
 ## First run
 
-1. In WoW, open *Interface > Controls* and enable **Auto Loot**. The bot never looks for a
-   loot window.
-2. Put the Fishing ability on your action bar. Note its keybind (default `1` in wowfish).
-3. Run `wowfish doctor`. Every line should be `ok` or `warn`; a `fail` means the install
-   is broken and the line says why.
-4. Run `wowfish models pull` to download the detection models from Hugging Face.
-5. Run `wowfish config` to create the config file and see where it lives. Edit `cast_key`
-   if your Fishing keybind is not `1`.
+In the game:
+
+1. *Options > Gameplay > Controls*: enable **Auto Loot**.
+2. *Options > Keybindings > Targeting*: bind **Interact With Target**. wowfish assumes `f`.
+3. Put **Fishing** on an action bar key. wowfish assumes `1`.
+4. Type `/console SoftTargetIconGameObject 1` once. This shows the gold gear icon over your
+   bobber whenever it is close enough to interact with.
+5. *Options > Sound*: set **Ambience** and **Music** to 0 and keep **Sound Effects** up. The
+   bite is a sound effect; ocean ambience is the same kind of noise and buries it.
+
+On your machine:
+
+- **Linux (GNOME on Wayland):** the first synthetic key press opens a "Remote Desktop" dialog.
+  Switch on *Allow Remote Interaction* and click *Share*. Until you do, key presses are
+  silently dropped.
+- **macOS:** install a virtual loopback device such as
+  [BlackHole](https://existential.audio/blackhole/) and route the game's audio through it.
+  macOS has no built-in way to record what it plays.
+- **Windows:** nothing to do. Game audio is captured through WASAPI loopback.
+
+Then:
+
+    wowfish doctor
+    wowfish config                      # creates the config file; edit cast_key / interact_key
+    wowfish calibrate shot.png --save   # a screenshot that shows the gold gear over the bobber
+    wowfish listen --record bite.wav --seconds 60   # fish one bite by hand while it records
+    wowfish verify-bite bite.wav --save
 
 ## Commands
 
 | command | what it does |
 |---|---|
-| `wowfish doctor` | Check OS, display server, onnxruntime, models, config |
-| `wowfish models pull` | Download model weights (pinned per release) |
-| `wowfish models status` | Show which weights are cached and where |
+| `wowfish doctor` | Check OS, display, OpenCV, audio loopback devices, config |
+| `wowfish calibrate SHOT.png [--save]` | Measure the interact icon's on-screen size from a screenshot |
+| `wowfish watch --live` | Show what the matcher sees: phase, score, position, milliseconds per frame |
+| `wowfish watch --from DIR` | Same, over saved frames; `--save-frames` writes annotated thumbnails |
+| `wowfish listen [--list] [--record WAV]` | List loopback devices, meter game audio, print bites as they are heard |
+| `wowfish verify-bite WAV [--save]` | Score a recording against every splash clip and pick the bite |
 | `wowfish config` | Create the config file if needed and print the resolved settings |
 | `wowfish config --path` | Print only the config file location |
 | `wowfish --version` | Print the version |
@@ -77,12 +100,20 @@ Add `--verbose` before any command for debug logging. `doctor` prints the log fi
 
 ## How it works
 
-The bot captures the game window, runs a tiny ONNX bobber localizer on each frame, crops
-around the bobber, and runs a splash classifier on the crop. On a splash it right-clicks the
-bobber after a short randomized delay, waits for Auto Loot, and casts again. Models are
-trained in PyTorch on recorded Forever fishing sessions and exported to ONNX so the shipped
-executable never needs torch. Weights live at
-[huggingface.co/rsamf/wow-fishing-forever](https://huggingface.co/rsamf/wow-fishing-forever).
+**The icon.** The client draws a gold gear sprite over the bobber when it is in interact
+range. wowfish ships that sprite at its five native sizes and matches it against the game
+window with a masked, mean-subtracted template match, so only the gear's own pixels count and
+water never out-scores it. Calibration measures the on-screen size once. After each cast the
+whole frame is searched; once the icon is found only a small box around it is tracked.
+
+**The bite.** The client plays one of its splash clips when a fish bites. wowfish ships those
+clips and fingerprints the first 0.8 seconds of each as a log-mel spectrogram with the gain
+removed. Game audio is captured from the system loopback device and correlated against the
+fingerprints every 12 milliseconds; a correlation above your threshold is the bite.
+`verify-bite` sets that threshold from a recording of your own setup.
+
+**What it never does.** No memory reading, no injected code, no addon, no network traffic.
+It looks at pixels and listens to sound, then presses the keys you told it about.
 
 ## Looking for the old bot?
 

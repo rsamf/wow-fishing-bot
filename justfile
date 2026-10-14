@@ -29,3 +29,5 @@ build:
 smoke:
     ./dist/wowfish --version
     ./dist/wowfish doctor
+    ./dist/wowfish listen --list
+    ./dist/wowfish calibrate tests/fixtures/wow_icon_crop.png

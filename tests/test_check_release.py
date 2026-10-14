@@ -34,3 +34,12 @@ def test_main_exits_1_on_mismatched_tag_and_prints_nothing_to_stdout(capsys):
     out, err = capsys.readouterr()
     assert out == ""
     assert "does not match" in err
+
+
+def test_assets_check_passes_on_this_tree_and_fails_on_an_empty_one(tmp_path):
+    from check_release import check_assets_present
+
+    check_assets_present(Path(__file__).resolve().parents[1])
+    with pytest.raises(SystemExit) as exc:
+        check_assets_present(tmp_path)
+    assert exc.value.code == 1

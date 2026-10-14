@@ -4,11 +4,13 @@
 Build with: uv run pyinstaller --clean --noconfirm packaging/wowfish.spec
 """
 
-from PyInstaller.utils.hooks import copy_metadata
+from PyInstaller.utils.hooks import collect_data_files, copy_metadata
 
 datas, binaries, hiddenimports = [], [], []
 # importlib.metadata.version("wowfish") needs the dist-info inside the bundle.
 datas += copy_metadata("wowfish")
+datas += collect_data_files("soundcard")  # it reads bundled *.py.h headers at import
+datas += [("../src/wowfish/assets", "wowfish/assets")]
 
 a = Analysis(
     ["../src/wowfish/__main__.py"],

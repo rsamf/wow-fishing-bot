@@ -12,28 +12,32 @@ Install [uv](https://docs.astral.sh/uv/) and optionally [just](https://github.co
 | just | without just |
 |---|---|
 | `just test` | `uv run pytest` |
-| `just test-integration` | `uv run pytest -m integration` (hits huggingface.co) |
 | `just lint` | `uv run ruff check . && uv run ruff format --check .` |
 | `just fmt` | `uv run ruff check --fix . && uv run ruff format .` |
 | `just build` | `uv run pyinstaller --clean --noconfirm packaging/wowfish.spec` |
-| `just smoke` | `./dist/wowfish --version && ./dist/wowfish doctor` |
+| `just smoke` | run the built executable: `--version`, `doctor`, `listen --list`, `calibrate` on the fixture |
 
-Unit tests never touch the network or the display. Set `WOWFISH_HOME` to redirect config,
-cache, and logs; the test suite does this automatically.
+Unit tests never touch the network, the display, or audio hardware: `soundcard`, `mss`, and
+`Xlib` are imported lazily and the tests stub them. The X11 capture tests run only when
+`DISPLAY` is set. Set `WOWFISH_HOME` to redirect config, cache, and logs; the test suite does
+this automatically.
 
 ## Layout
 
     src/wowfish/
-      cli.py       typer commands
-      config.py    TOML config, defaults, warnings, errors
-      paths.py     config / cache / log locations (WOWFISH_HOME override)
-      models.py    model manifest, pinned Hub revision, download
-      doctor.py    environment probes
-      capture/     screen capture protocol (+ stub)
-      input/       keyboard/mouse protocol (+ stub)
-    scripts/       release preflight, placeholder model builder, Hub publisher
-    packaging/     PyInstaller spec
-    tests/         unit tests; tests/integration/ needs network
+      cli.py        typer app; registers the commands below
+      commands/     calibrate, watch, listen, verify-bite (one module each)
+      config.py     TOML config: [game], [vision], [audio]; defaults, validation, save
+      paths.py      config / cache / log locations (WOWFISH_HOME override)
+      doctor.py     environment probes
+      assets/       interact-icon sprites (PNG) and splash clips (WAV) shipped in the package
+      vision/       templates, regions, masked matcher, acquire/track search, calibration, annotate
+      audio/        WAV I/O, log-mel features, fingerprints, bite detector, loopback devices
+      capture/      window lookup and capture: X11 (ctypes XGetImage), mss, stub
+      input/        keyboard/mouse protocol (+ stub; real devices arrive with the runtime)
+    scripts/        release preflight, clip conversion (ffmpeg, dev only)
+    packaging/      PyInstaller spec
+    tests/          unit tests, synthetic frame/audio helpers, tests/fixtures/
 
 ## Branches and releases
 
@@ -42,16 +46,17 @@ cache, and logs; the test suite does this automatically.
 - Versions are PEP 440 (`1.0.0a1`, `1.0.0b1`, `1.0.0rc1`, `1.0.0`). Tags are `v` + version.
 - To cut a release: bump `version` in `pyproject.toml`, commit, then
   `git tag v<version> && git push origin v<version>`. The release workflow verifies the tag
-  matches the version and that the pinned model revision exists on the Hub, builds three
-  executables, and publishes a GitHub Release (marked prerelease for a/b/rc versions).
+  matches the version and that the package assets are present, builds three executables,
+  and publishes a GitHub Release (marked prerelease for a/b/rc versions).
 
-## Updating model weights
+## Updating the bundled clips or sprites
 
-1. `uv run python scripts/publish_models.py <dir-with-onnx-files> "message"` prints a commit hash.
-2. Paste it into `MODEL_REVISION` in `src/wowfish/models.py`.
-3. `uv run pytest -m integration` to confirm the download path still works.
+The splash clips are converted once from the game's Vorbis files with
+`uv run python scripts/convert_clips.py <dir-with-ogg-files>` (needs `ffmpeg`) and committed
+as 16-bit mono 22050 Hz WAV. The gear sprites are cropped from the client's 2x crosshair
+sheet. Neither step runs at install or build time.
 
 ## Pull requests
 
-CI runs lint, unit tests, integration tests, and a PyInstaller smoke build on Linux,
-Windows, and macOS. Keep PRs green on all three. Add tests for behavior changes.
+CI runs lint, unit tests, and a PyInstaller smoke build on Linux, Windows, and macOS. Keep
+PRs green on all three. Add tests for behavior changes.
