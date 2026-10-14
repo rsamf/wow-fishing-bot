@@ -21,10 +21,6 @@ fmt:
 test:
     uv run pytest
 
-# Network tests against the Hugging Face Hub
-test-integration:
-    uv run pytest -m integration
-
 # Build the single-file executable into dist/
 build:
     uv run pyinstaller --clean --noconfirm packaging/wowfish.spec

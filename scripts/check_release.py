@@ -24,24 +24,10 @@ def is_prerelease(version: str) -> bool:
     return bool(_PRERELEASE_RE.match(version))
 
 
-def check_revision_exists(repo: str, revision: str, api=None) -> None:
-    if api is None:
-        from huggingface_hub import HfApi
-
-        api = HfApi()
-    if not api.revision_exists(repo, revision, repo_type="model"):
-        print(f"error: model revision {revision} not found in {repo}", file=sys.stderr)
-        raise SystemExit(1)
-
-
 def main(tag: str) -> None:
     root = Path(__file__).resolve().parents[1]
     version = tomllib.loads((root / "pyproject.toml").read_text())["project"]["version"]
     check_tag_matches_version(tag, version)
-    sys.path.insert(0, str(root / "src"))
-    from wowfish.models import MODEL_REPO, MODEL_REVISION
-
-    check_revision_exists(MODEL_REPO, MODEL_REVISION)
     print(f"prerelease={'true' if is_prerelease(version) else 'false'}")
 
 

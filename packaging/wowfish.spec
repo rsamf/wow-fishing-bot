@@ -4,14 +4,9 @@
 Build with: uv run pyinstaller --clean --noconfirm packaging/wowfish.spec
 """
 
-from PyInstaller.utils.hooks import collect_all, copy_metadata
+from PyInstaller.utils.hooks import copy_metadata
 
 datas, binaries, hiddenimports = [], [], []
-for pkg in ("onnxruntime", "huggingface_hub", "hf_xet"):
-    d, b, h = collect_all(pkg)
-    datas += d
-    binaries += b
-    hiddenimports += h
 # importlib.metadata.version("wowfish") needs the dist-info inside the bundle.
 datas += copy_metadata("wowfish")
 

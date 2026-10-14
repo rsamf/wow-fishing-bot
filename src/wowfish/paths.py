@@ -43,9 +43,5 @@ def config_file() -> Path:
     return config_dir() / "config.toml"
 
 
-def models_dir() -> Path:
-    return _ensure(cache_dir() / "models")
-
-
 def log_file() -> Path:
     return log_dir() / "wowfish.log"

@@ -11,9 +11,9 @@ def test_wowfish_home_overrides_everything(isolated_home):
 
 def test_directories_are_created_on_demand(isolated_home):
     assert not isolated_home.exists()
-    d = paths.models_dir()
+    d = paths.cache_dir()
     assert d.is_dir()
-    assert d == isolated_home / "cache" / "models"
+    assert d == isolated_home / "cache"
 
 
 def test_file_paths_hang_off_their_dirs(isolated_home):
@@ -27,3 +27,7 @@ def test_without_override_uses_platformdirs(monkeypatch, tmp_path):
 
     monkeypatch.setattr(platformdirs, "user_config_dir", lambda name: str(tmp_path / "pd-config"))
     assert paths.config_dir() == Path(tmp_path / "pd-config")
+
+
+def test_models_dir_is_gone():
+    assert not hasattr(paths, "models_dir")

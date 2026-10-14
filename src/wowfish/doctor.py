@@ -94,38 +94,9 @@ def probe_display() -> ProbeResult:
     return ProbeResult("display", "warn", "none")
 
 
-def probe_onnxruntime() -> ProbeResult:
-    import onnxruntime
-
-    providers = onnxruntime.get_available_providers()
-    detail = f"{onnxruntime.__version__}, providers: {', '.join(providers)}"
-    if "CPUExecutionProvider" not in providers:
-        return ProbeResult("onnxruntime", "fail", f"CPUExecutionProvider missing ({detail})")
-    return ProbeResult("onnxruntime", "ok", detail)
-
-
 def probe_game_window() -> ProbeResult:
     # Window discovery lands with the bot runtime. The line exists so reports have a stable shape.
     return ProbeResult("game window", "warn", "not found (window discovery not implemented yet)")
-
-
-def probe_models() -> ProbeResult:
-    from wowfish import models
-    from wowfish.config import ConfigError, load_config
-
-    try:
-        cfg, _ = load_config()
-    except ConfigError:
-        cfg = None
-    revision = models.effective_revision(cfg) if cfg else models.MODEL_REVISION
-    note = " (override from config)" if cfg and cfg.models.revision else ""
-    statuses = models.status(revision)
-    missing = [s.spec.filename for s in statuses if not s.cached]
-    if missing:
-        return ProbeResult(
-            "models", "warn", f"{', '.join(missing)} not downloaded, run `wowfish models pull`"
-        )
-    return ProbeResult("models", "ok", f"{len(statuses)} cached at {revision}{note}")
 
 
 def probe_config() -> ProbeResult:
@@ -145,8 +116,6 @@ def default_probes() -> list[Probe]:
     return [
         probe_system,
         probe_display,
-        probe_onnxruntime,
         probe_game_window,
-        probe_models,
         probe_config,
     ]

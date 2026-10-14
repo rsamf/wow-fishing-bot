@@ -70,65 +70,9 @@ def config(
     typer.echo(to_toml(cfg), nl=False)
 
 
-models_app = typer.Typer(help="Download and inspect model weights.", no_args_is_help=True)
-app.add_typer(models_app, name="models")
-
-
-def _human_size(n: int) -> str:
-    for unit in ("B", "KB", "MB"):
-        if n < 1024:
-            return f"{n} {unit}" if unit == "B" else f"{n:.1f} {unit}"
-        n //= 1024
-    return f"{n} GB"
-
-
-def _load_config_or_fail():
-    from wowfish import paths
-    from wowfish.config import ConfigError, load_config
-
-    try:
-        cfg, warnings = load_config(paths.config_file())
-    except ConfigError as e:
-        fail(str(e))
-    for w in warnings:
-        typer.echo(f"warning: {w}", err=True)
-    return cfg
-
-
-@models_app.command("status")
-def models_status() -> None:
-    """Show the pinned model revision and which files are cached."""
-    from wowfish import models
-
-    cfg = _load_config_or_fail()
-    revision = models.effective_revision(cfg)
-    note = " (override from config)" if cfg.models.revision else ""
-    typer.echo(f"repo:     {models.MODEL_REPO}")
-    typer.echo(f"revision: {revision}{note}")
-    for st in models.status(revision):
-        state = "cached" if st.cached else "missing"
-        typer.echo(f"{st.spec.filename:<14} {state:<8} {st.path}")
-
-
-@models_app.command("pull")
-def models_pull(
-    force: bool = typer.Option(False, "--force", help="Re-download even if cached."),
-) -> None:
-    """Download model weights from the Hugging Face Hub."""
-    from wowfish import models
-
-    cfg = _load_config_or_fail()
-    revision = models.effective_revision(cfg)
-    try:
-        for p in models.pull(revision, force=force, downloader=models.hf_hub_download):
-            typer.echo(f"{p.name:<14} {_human_size(p.stat().st_size)}")
-    except models.ModelDownloadError as e:
-        fail(str(e))
-
-
 @app.command()
 def doctor() -> None:
-    """Check this machine: display, onnxruntime, models, config. Exits 1 only on hard failures."""
+    """Check this machine: display, OpenCV, audio, config. Exits 1 only on hard failures."""
     from wowfish import doctor as doc
 
     results = doc.run_probes(doc.default_probes())

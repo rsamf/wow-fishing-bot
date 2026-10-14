@@ -5,11 +5,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from check_release import (
-    check_revision_exists,
-    check_tag_matches_version,
-    is_prerelease,
-)
+from check_release import check_tag_matches_version, is_prerelease
 
 
 def test_tag_must_be_v_plus_version():
@@ -27,21 +23,6 @@ def test_tag_must_be_v_plus_version():
 )
 def test_is_prerelease(version, expected):
     assert is_prerelease(version) is expected
-
-
-class _Api:
-    def __init__(self, exists):
-        self._exists = exists
-
-    def revision_exists(self, repo_id, revision, repo_type=None):
-        return self._exists
-
-
-def test_revision_check_passes_and_fails():
-    check_revision_exists("r", "abc", api=_Api(True))
-    with pytest.raises(SystemExit) as exc:
-        check_revision_exists("r", "abc", api=_Api(False))
-    assert exc.value.code == 1
 
 
 def test_main_exits_1_on_mismatched_tag_and_prints_nothing_to_stdout(capsys):

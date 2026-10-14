@@ -73,41 +73,9 @@ def test_probe_display_on_linux_with_no_display_warns(monkeypatch):
     assert r.level == "warn" and r.detail == "none"
 
 
-def test_probe_onnxruntime_ok_with_cpu_provider():
-    r = doctor.probe_onnxruntime()
-    assert r.level == "ok"
-    assert "CPUExecutionProvider" in r.detail
-
-
-def test_probe_onnxruntime_fails_without_cpu_provider(monkeypatch):
-    import onnxruntime
-
-    monkeypatch.setattr(onnxruntime, "get_available_providers", lambda: ["AzureExecutionProvider"])
-    r = doctor.probe_onnxruntime()
-    assert r.level == "fail"
-    assert "CPUExecutionProvider" in r.detail
-
-
 def test_probe_game_window_is_a_warn_stub():
     r = doctor.probe_game_window()
     assert r.level == "warn" and "not found" in r.detail
-
-
-def test_probe_models_warns_when_missing_and_names_the_fix():
-    r = doctor.probe_models()
-    assert r.level == "warn"
-    assert "wowfish models pull" in r.detail
-
-
-def test_probe_models_ok_when_all_cached():
-    from wowfish import models
-
-    for spec in models.MODELS:
-        p = models.model_path(spec, models.MODEL_REVISION)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_bytes(b"x")
-    r = doctor.probe_models()
-    assert r.level == "ok" and models.MODEL_REVISION in r.detail
 
 
 def test_probe_config_ok_and_fail():
@@ -125,7 +93,7 @@ def test_probe_config_warns_on_unknown_keys():
 
 @pytest.mark.parametrize(
     "name",
-    ["system", "display", "onnxruntime", "game window", "models", "config"],
+    ["system", "display", "game window", "config"],
 )
 def test_default_probes_cover_every_area(name):
     results = doctor.run_probes(doctor.default_probes())

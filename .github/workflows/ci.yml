@@ -39,9 +39,6 @@ jobs:
       - name: Unit tests
         run: uv run pytest -v
 
-      - name: Integration tests (Hugging Face Hub)
-        run: uv run pytest -m integration -v
-
       - name: Build executable
         run: uv run pyinstaller --clean --noconfirm packaging/wowfish.spec
 
@@ -50,16 +47,12 @@ jobs:
         run: |
           ./dist/wowfish --version
           ./dist/wowfish doctor
-          ./dist/wowfish models pull
-          ./dist/wowfish doctor
 
       - name: Smoke executable (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           .\dist\wowfish.exe --version; if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          .\dist\wowfish.exe doctor;    if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          .\dist\wowfish.exe models pull; if ($LASTEXITCODE) { exit $LASTEXITCODE }
           .\dist\wowfish.exe doctor;    if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       - name: Upload executable

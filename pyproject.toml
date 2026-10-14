@@ -11,8 +11,6 @@ dependencies = [
   "typer>=0.27,<1",
   "platformdirs>=4.13,<5",
   "loguru>=0.7,<1",
-  "huggingface_hub>=2.2,<3",
-  "onnxruntime>=1.31,<2",
   "numpy>=2.5,<3",
   "tomli-w>=1.2,<2",
 ]
@@ -32,7 +30,6 @@ dev = [
   "pytest>=9,<10",
   "pytest-cov>=7,<8",
   "pyinstaller>=6.22,<7",
-  "onnx>=1.23,<2",
   "pre-commit>=4,<5",
 ]
 
@@ -53,5 +50,3 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["integration: hits the network (Hugging Face Hub); run explicitly"]
-addopts = "-m 'not integration' --strict-markers"
