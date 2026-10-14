@@ -49,6 +49,7 @@ jobs:
           ./dist/wowfish doctor
           ./dist/wowfish listen --list
           ./dist/wowfish calibrate tests/fixtures/wow_icon_crop.png
+          ./dist/wowfish-gui --version
 
       - name: Smoke executable (Windows)
         if: runner.os == 'Windows'
@@ -58,6 +59,7 @@ jobs:
           .\dist\wowfish.exe doctor;    if ($LASTEXITCODE) { exit $LASTEXITCODE }
           .\dist\wowfish.exe listen --list; if ($LASTEXITCODE) { exit $LASTEXITCODE }
           .\dist\wowfish.exe calibrate tests/fixtures/wow_icon_crop.png; if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          .\dist\wowfish-gui.exe --version; if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       - name: Upload executable
         if: matrix.python == '3.12'

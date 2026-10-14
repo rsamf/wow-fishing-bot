@@ -26,17 +26,19 @@ this automatically.
 
     src/wowfish/
       cli.py        typer app; registers the commands below
-      commands/     calibrate, watch, listen, verify-bite (one module each)
-      config.py     TOML config: [game], [vision], [audio]; defaults, validation, save
+      commands/     calibrate, watch, listen, verify-bite, run, gui (one module each)
+      config.py     TOML config: [game], [vision], [audio], [run]; defaults, validation, save
       paths.py      config / cache / log locations (WOWFISH_HOME override)
       doctor.py     environment probes
       assets/       interact-icon sprites (PNG) and splash clips (WAV) shipped in the package
       vision/       templates, regions, masked matcher, acquire/track search, calibration, annotate
       audio/        WAV I/O, log-mel features, fingerprints, bite detector, loopback devices
-      capture/      window lookup and capture: X11 (ctypes XGetImage), mss, stub
-      input/        keyboard/mouse protocol (+ stub; real devices arrive with the runtime)
+      capture/      window lookup and capture: X11 (ctypes XGetImage), Windows (user32 + mss), stub
+      input/        key presses: XTest (python-xlib) on Linux, SendInput on Windows, stub elsewhere
+      engine/       the fishing loop: states, events, FishingEngine (injectable collaborators), thread
+      gui/          Tk-free Presenter (engine thread + setup workers), ttkbootstrap window and pages
     scripts/        release preflight, clip conversion (ffmpeg, dev only)
-    packaging/      PyInstaller spec
+    packaging/      PyInstaller spec (console `wowfish` and windowed `wowfish-gui`)
     tests/          unit tests, synthetic frame/audio helpers, tests/fixtures/
 
 ## Branches and releases

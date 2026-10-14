@@ -74,19 +74,45 @@ On your machine:
   macOS has no built-in way to record what it plays.
 - **Windows:** nothing to do. Game audio is captured through WASAPI loopback.
 
-Then:
+Then open the window and work down its Setup tab:
+
+    wowfish gui          # or double-click wowfish-gui
+
+It saves your keys, picks the audio device (with a live level so you can see the game is
+heard), grabs the game window to measure the gear icon, and records a minute of your own
+fishing to check the splash. The Fish tab's Start button lists anything still missing.
+
+The same steps from the terminal:
 
     wowfish doctor
     wowfish config                      # creates the config file; edit cast_key / interact_key
     wowfish calibrate shot.png --save   # a screenshot that shows the gold gear over the bobber
     wowfish listen --record bite.wav --seconds 60   # fish one bite by hand while it records
     wowfish verify-bite bite.wav --save
+    wowfish run                         # Ctrl-C stops
+
+## Running the bot
+
+Stand at the water with the game window focused and press Start (GUI) or run `wowfish run`.
+Each cast: press the cast key, look for the gear icon for 6 s, listen for the splash for up to
+30 s, press Interact, wait up to 3 s for the bobber to disappear (Auto Loot takes the catch),
+pause a random half-second to two seconds, cast again. If the gear icon never shows or no
+splash comes, it recasts and counts a miss. If another window takes focus it pauses rather
+than typing into that window, and resumes when the game is focused again. The session ends
+after `session_minutes` (default 60) or when you stop it.
+
+Every step is reported as "what I did. What I will do next.", for example "Found the bobber
+at (2622, 899). Waiting for a splash; will press f when I hear one." The GUI also shows the
+frame the icon was found in with a box around it. Timeouts and pauses are in the `[run]`
+table of the config file.
 
 ## Commands
 
 | command | what it does |
 |---|---|
-| `wowfish doctor` | Check OS, display, OpenCV, audio loopback devices, config |
+| `wowfish gui` | The setup and fishing window |
+| `wowfish run [--minutes N]` | Fish from the terminal until Ctrl-C or the session limit |
+| `wowfish doctor` | Check OS, display, OpenCV, audio devices, game window, input, calibration, config |
 | `wowfish calibrate SHOT.png [--save]` | Measure the interact icon's on-screen size from a screenshot |
 | `wowfish watch --live` | Show what the matcher sees: phase, score, position, milliseconds per frame |
 | `wowfish watch --from DIR` | Same, over saved frames; `--save-frames` writes annotated thumbnails |
