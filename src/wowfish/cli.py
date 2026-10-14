@@ -5,10 +5,11 @@ from __future__ import annotations
 import typer
 
 from wowfish import __version__
+from wowfish.commands._common import fail
 
 app = typer.Typer(
     name="wowfish",
-    help="A vision-based fishing bot for World of Warcraft: Forever.",
+    help="A fishing bot for World of Warcraft: Forever.",
     no_args_is_help=True,
     add_completion=False,
 )
@@ -38,12 +39,6 @@ def _root(
 
 def main() -> None:
     app()
-
-
-def fail(message: str) -> None:
-    """Print a one-line error and exit 1. Used by every command."""
-    typer.echo(f"error: {message}", err=True)
-    raise typer.Exit(code=1)
 
 
 @app.command()
@@ -78,3 +73,8 @@ def doctor() -> None:
     results = doc.run_probes(doc.default_probes())
     typer.echo(doc.render(results))
     raise typer.Exit(code=doc.exit_code(results))
+
+
+from wowfish.commands import register_all  # noqa: E402
+
+register_all(app)

@@ -94,6 +94,29 @@ def probe_display() -> ProbeResult:
     return ProbeResult("display", "warn", "none")
 
 
+def probe_opencv() -> ProbeResult:
+    import cv2
+
+    return ProbeResult("opencv", "ok", cv2.__version__)
+
+
+def probe_audio() -> ProbeResult:
+    from wowfish.audio import AudioUnavailable, devices
+
+    try:
+        found = devices.list_loopback_devices()
+    except AudioUnavailable as e:
+        return ProbeResult("audio", "warn", f"no audio backend ({e})")
+    if not found:
+        return ProbeResult(
+            "audio",
+            "warn",
+            "no loopback devices (macOS: install a virtual device such as BlackHole)",
+        )
+    default = next((d.name for d in found if d.is_default), found[0].name)
+    return ProbeResult("audio", "ok", f"{len(found)} loopback device(s), default: {default}")
+
+
 def probe_game_window() -> ProbeResult:
     # Window discovery lands with the bot runtime. The line exists so reports have a stable shape.
     return ProbeResult("game window", "warn", "not found (window discovery not implemented yet)")
@@ -116,6 +139,8 @@ def default_probes() -> list[Probe]:
     return [
         probe_system,
         probe_display,
+        probe_opencv,
+        probe_audio,
         probe_game_window,
         probe_config,
     ]

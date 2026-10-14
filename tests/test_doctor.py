@@ -93,8 +93,32 @@ def test_probe_config_warns_on_unknown_keys():
 
 @pytest.mark.parametrize(
     "name",
-    ["system", "display", "game window", "config"],
+    ["system", "display", "opencv", "audio", "game window", "config"],
 )
 def test_default_probes_cover_every_area(name):
     results = doctor.run_probes(doctor.default_probes())
     assert name in [r.name for r in results]
+
+
+def test_probe_audio_levels(monkeypatch):
+    from wowfish.audio import AudioUnavailable, devices
+    from wowfish.audio.devices import LoopbackDevice
+
+    def boom():
+        raise AudioUnavailable("no server")
+
+    monkeypatch.setattr(devices, "list_loopback_devices", boom)
+    assert doctor.probe_audio().level == "warn"
+    monkeypatch.setattr(devices, "list_loopback_devices", lambda: [])
+    r = doctor.probe_audio()
+    assert r.level == "warn" and "BlackHole" in r.detail
+    monkeypatch.setattr(
+        devices, "list_loopback_devices", lambda: [LoopbackDevice("m", "Mon", True)]
+    )
+    r = doctor.probe_audio()
+    assert r.level == "ok" and "Mon" in r.detail
+
+
+def test_probe_opencv_is_ok():
+    r = doctor.probe_opencv()
+    assert r.level == "ok" and r.detail[0].isdigit()
