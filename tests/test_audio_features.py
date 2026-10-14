@@ -8,8 +8,8 @@ P = MelParams()
 
 def test_frames_for_matches_the_framing_rule():
     assert P.frames_for(0) == 0 and P.frames_for(511) == 0 and P.frames_for(512) == 1
-    assert P.frames_for(512 + 256 * 10) == 11
-    assert P.frame_s == pytest.approx(256 / 22050)
+    assert P.frames_for(512 + 64 * 10) == 11
+    assert P.frame_s == pytest.approx(64 / 22050)
 
 
 def test_filterbank_shape_and_every_band_is_non_empty():

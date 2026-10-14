@@ -7,7 +7,10 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 
-from wowfish.audio.features import MelParams, log_mel
+from wowfish.audio.features import SILENCE_LEVEL_DB, MelParams, log_mel
+
+NO_SCORE = -1.0
+_BLOCK = 2048  # windows scored per batch; keeps the normalised-window buffer under ~100 MB
 
 
 @dataclass(frozen=True)
@@ -38,11 +41,20 @@ def build_fingerprint(
 
 
 def score_sequence(feats: np.ndarray, fp: Fingerprint) -> np.ndarray:
-    """NCC of every trailing L-frame window of `feats` with `fp`; -1 before L frames exist."""
+    """NCC of every trailing L-frame window of `feats` with `fp`.
+
+    NO_SCORE before L frames exist and for windows quieter than SILENCE_LEVEL_DB.
+    """
     t, length = len(feats), fp.length
-    out = np.full(t, -1.0, dtype=np.float32)
+    out = np.full(t, NO_SCORE, dtype=np.float32)
     if t < length:
         return out
     windows = sliding_window_view(feats, (length, feats.shape[1]))[:, 0]  # (t-L+1, L, n_mels)
-    out[length - 1 :] = np.einsum("tij,ij->t", normalize_block(windows), fp.feats)
+    level = np.convolve(feats.mean(axis=1), np.ones(length) / length, mode="valid")
+    for start in range(0, len(windows), _BLOCK):
+        block = windows[start : start + _BLOCK]
+        scores = np.einsum("tij,ij->t", normalize_block(block), fp.feats)
+        quiet = level[start : start + len(block)] < SILENCE_LEVEL_DB
+        lo = length - 1 + start
+        out[lo : lo + len(block)] = np.where(quiet, NO_SCORE, scores)
     return out

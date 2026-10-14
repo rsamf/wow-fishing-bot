@@ -37,8 +37,9 @@ match_width = 1920
 device = ""
 # Which clip family counts as the bite: "fishingbobber" or "fishbite".
 bite_clip = "fishingbobber"
-# Minimum correlation (0..1) with the clip onset to count as a bite.
-bite_threshold = 0.7
+# Minimum correlation (0..1) with the clip onset to count as a bite. Real bites score
+# 0.72-0.94, the loudest non-bite game sounds about 0.63.
+bite_threshold = 0.68
 # Ignore further bites for this many seconds after one fires.
 refractory_s = 3.0
 """
@@ -77,7 +78,7 @@ class VisionConfig:
 class AudioConfig:
     device: str = ""
     bite_clip: str = "fishingbobber"
-    bite_threshold: float = 0.7
+    bite_threshold: float = 0.68
     refractory_s: float = 3.0
 
 

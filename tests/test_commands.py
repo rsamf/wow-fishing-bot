@@ -148,8 +148,8 @@ def test_verify_bite_refuses_to_save_when_nothing_stands_out(cli_runner, tmp_pat
     p = tmp_path / "noise.wav"
     write_wav(p, pink_noise(6 * RATE, np.random.default_rng(11)), RATE)
     result = cli_runner.invoke(app, ["verify-bite", str(p), "--save"])
-    assert result.exit_code == 1 and "no clip stands out" in result.output
-    assert load_config()[0].audio.bite_threshold == 0.7
+    assert result.exit_code == 1 and "no bite stands out" in result.output
+    assert load_config()[0].audio.bite_threshold == 0.68
 
 
 def test_watch_live_without_the_game_fails_cleanly_on_linux(cli_runner, monkeypatch):

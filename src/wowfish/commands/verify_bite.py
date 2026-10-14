@@ -6,7 +6,6 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Annotated
 
-import numpy as np
 import typer
 
 from wowfish import paths
@@ -26,9 +25,9 @@ def verify_bite(
     ),
 ) -> None:
     """Score a recording against every clip; print each clip's peak, floor, and the suggestion."""
-    from wowfish.audio.clips import build_fingerprints
+    from wowfish.audio.clips import build_fingerprints, family_of
     from wowfish.audio.features import MelParams
-    from wowfish.audio.verify import clip_peaks, noise_floor, score_recording, suggest
+    from wowfish.audio.verify import clip_peaks, family_report, score_recording
     from wowfish.audio.wav import read_wav
 
     cfg = load_config_or_fail()
@@ -37,18 +36,23 @@ def verify_bite(
     y, rate = read_wav(recording)
     scores = score_recording(y, rate, fps, p)
     typer.echo(f"{recording}: {len(y) / rate:.1f}s at {rate} Hz")
-    for cs in clip_peaks(scores, fps, p):
-        s = scores[cs.name]
-        floor = noise_floor(s, int(np.argmax(s)), p)
-        typer.echo(f"{cs.name:16s} peak {cs.score:5.2f} at {cs.t:6.2f}s   floor {floor:5.2f}")
-    family, threshold = suggest(scores, fps, p)
+    peaks = clip_peaks(scores, fps, p)
+    for cs in peaks:
+        typer.echo(f"{cs.name:16s} peak {cs.score:5.2f} at {cs.t:6.2f}s")
+    best = max(peaks, key=lambda c: c.score)
+    report = family_report(scores, fps, p, family_of(best.name))
+    family, threshold = report.family, report.threshold
+    if report.stands_out:
+        lo = min(b.score for b in report.bites)
+        hi = max(b.score for b in report.bites)
+        when = ", ".join(f"{b.t:.1f}s" for b in sorted(report.bites, key=lambda b: b.t))
+        typer.echo(f"{family}: {len(report.bites)} bite(s) scoring {lo:.2f}-{hi:.2f} at {when}")
+        typer.echo(f"everything else scores at most {report.floor:.2f}")
     typer.echo(f"bite family: {family}   suggested bite_threshold={threshold:.2f}")
-    best = max(clip_peaks(scores, fps, p), key=lambda c: c.score)
-    margin = best.score - noise_floor(scores[best.name], int(np.argmax(scores[best.name])), p)
-    if margin < MIN_MARGIN:
+    if not report.stands_out:
         typer.echo(
-            f"warning: no clip stands out (peak only {margin:.2f} above its floor); record again "
-            "with Ambience and Music at 0 and one clear bite",
+            f"warning: no bite stands out (best peak {best.score:.2f}, everything else up to "
+            f"{report.floor:.2f}); record again with Ambience and Music at 0 and a clear bite",
             err=True,
         )
         if save:

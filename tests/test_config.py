@@ -29,7 +29,7 @@ def test_defaults_match_the_spec():
         icon_size_px=0, icon_native_size=0, icon_threshold=0.75, match_width=1920
     )
     assert AudioConfig() == AudioConfig(
-        device="", bite_clip="fishingbobber", bite_threshold=0.7, refractory_s=3.0
+        device="", bite_clip="fishingbobber", bite_threshold=0.68, refractory_s=3.0
     )
 
 

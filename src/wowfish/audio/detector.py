@@ -27,6 +27,9 @@ class BiteEvent:
     t: float  # stream seconds of the estimated onset start
 
 
+PEAK_HOLD_S = 0.02  # after the first frame over the threshold, wait this long for the peak
+
+
 class BiteDetector:
     def __init__(
         self,
@@ -34,7 +37,7 @@ class BiteDetector:
         p: MelParams = DEFAULT_MEL,
         *,
         trigger_clips: Sequence[str],
-        threshold: float = 0.7,
+        threshold: float = 0.68,
         refractory_s: float = 3.0,
         min_consecutive: int = 1,
     ) -> None:
@@ -50,7 +53,10 @@ class BiteDetector:
         self._feats = np.zeros((0, p.n_mels), dtype=np.float32)
         self._frames_total = 0
         self._run = dict.fromkeys(names, 0)
-        self._run_peak = dict.fromkeys(names, 0.0)
+        # armed[name] = (peak score, onset time of the peak, frames since the peak) while a
+        # trigger clip is over the threshold and the event has not been emitted yet
+        self._armed: dict[str, tuple[float, float, int]] = {}
+        self._hold_frames = max(1, round(PEAK_HOLD_S / p.frame_s))
         self._scores = {name: ClipScore(name, -1.0, 0.0) for name in names}
         self._level_dbfs = -120.0
         self._quiet_until = -math.inf
@@ -101,24 +107,38 @@ class BiteDetector:
             frame = self._frames_total - n_new + j  # global index of the window's last frame
             t_end = (frame * p.hop + p.n_fft) / p.sample_rate
             for fp in self.fingerprints:
-                score = float(per_clip[fp.name][j])
+                name = fp.name
+                score = float(per_clip[name][j])
                 if math.isnan(score):
                     continue
                 t_onset = t_end - fp.length * p.hop / p.sample_rate
-                self._scores[fp.name] = ClipScore(fp.name, score, t_onset)
+                self._scores[name] = ClipScore(name, score, t_onset)
+                armed = self._armed.get(name)
                 if score < self.threshold:
-                    self._run[fp.name] = 0
-                    self._run_peak[fp.name] = 0.0
+                    self._run[name] = 0
+                    if armed is not None:  # the run ended: report its peak
+                        self._emit(events, name, armed, t_end)
                     continue
-                self._run[fp.name] += 1
-                self._run_peak[fp.name] = max(self._run_peak[fp.name], score)
-                fires = (
-                    fp.name in self.trigger
-                    and self._run[fp.name] == self.min_consecutive
+                self._run[name] += 1
+                if armed is not None:
+                    peak, peak_onset, since = armed
+                    armed = (score, t_onset, 0) if score > peak else (peak, peak_onset, since + 1)
+                    self._armed[name] = armed
+                    if armed[2] >= self._hold_frames:
+                        self._emit(events, name, armed, t_end)
+                elif (
+                    name in self.trigger
+                    and self._run[name] == self.min_consecutive
                     and t_end >= self._quiet_until
-                )
-                if fires:
-                    events.append(BiteEvent(fp.name, self._run_peak[fp.name], t_onset))
-                    self._quiet_until = t_end + self.refractory_s
+                ):
+                    self._armed[name] = (score, t_onset, 0)
         self._feats = feats[-(2 * self._max_len) :]
         return events
+
+    def _emit(
+        self, events: list[BiteEvent], name: str, armed: tuple[float, float, int], t_end: float
+    ) -> None:
+        peak, peak_onset, _ = armed
+        events.append(BiteEvent(name, peak, peak_onset))
+        self._quiet_until = t_end + self.refractory_s
+        del self._armed[name]

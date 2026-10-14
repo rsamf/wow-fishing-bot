@@ -115,3 +115,16 @@ def test_two_bites_in_one_chunk_are_both_reported_in_time_order():
     assert [e.clip for e in small] == [e.clip for e in whole]
     assert whole[0].t < whole[1].t
     assert [round(e.t, 3) for e in small] == [round(e.t, 3) for e in whole]
+
+
+def test_event_score_is_the_peak_not_the_first_frame_over_the_threshold():
+    """At a 3 ms hop the first crossing is early in the rise; the event must carry the peak."""
+    from wowfish.audio.verify import score_recording
+
+    rng = np.random.default_rng(7)
+    y = mix(CLIPS["fishingbobber_3"], offset_s=3.0, snr_db=20, seconds=8, rng=rng, gain=1.0)
+    true_peak = float(score_recording(y, RATE, FPS, P)["fishingbobber_3"].max())
+    events = run(make(), y)
+    assert len(events) == 1
+    assert events[0].score == pytest.approx(true_peak, abs=0.01)
+    assert abs(events[0].t - 3.0) < 0.1

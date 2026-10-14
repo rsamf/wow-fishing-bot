@@ -111,7 +111,8 @@ found only a small box around it is tracked.
 **The bite.** The client plays one of its splash clips when a fish bites. wowfish ships those
 clips and fingerprints the first 0.8 seconds of each as a log-mel spectrogram with the gain
 removed. Game audio is captured from the system loopback device and correlated against the
-fingerprints every 12 milliseconds; a correlation above your threshold is the bite.
+fingerprints every 3 milliseconds; a correlation above your threshold is the bite. Silence is
+ignored outright, and the loudest other game sounds score about 0.63 against bites of 0.72 to 0.94.
 `verify-bite` sets that threshold from a recording of your own setup.
 
 **What it never does.** No memory reading, no injected code, no addon, no network traffic.
