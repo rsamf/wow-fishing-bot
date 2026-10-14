@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import tomllib
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +42,19 @@ bite_clip = "fishingbobber"
 bite_threshold = 0.68
 # Ignore further bites for this many seconds after one fires.
 refractory_s = 3.0
+
+[run]
+# Recast if the gear icon is not seen this many seconds after casting.
+icon_timeout_s = 6.0
+# Recast if no splash is heard this many seconds after casting.
+cast_timeout_s = 30.0
+# Count a miss if the bobber is still there this many seconds after pressing Interact.
+loot_timeout_s = 3.0
+# Random pause between actions, in seconds.
+pause_min_s = 0.5
+pause_max_s = 2.0
+# How long each key is held down, in milliseconds.
+key_hold_ms = 60
 """
 
 _LINE_RE = re.compile(r"\(at line (\d+), column \d+\)")
@@ -83,13 +96,29 @@ class AudioConfig:
 
 
 @dataclass(frozen=True)
+class RunConfig:
+    icon_timeout_s: float = 6.0
+    cast_timeout_s: float = 30.0
+    loot_timeout_s: float = 3.0
+    pause_min_s: float = 0.5
+    pause_max_s: float = 2.0
+    key_hold_ms: int = 60
+
+
+@dataclass(frozen=True)
 class Config:
     game: GameConfig
     vision: VisionConfig
     audio: AudioConfig
+    run: RunConfig = field(default_factory=RunConfig)
 
 
-_SECTIONS: dict[str, type] = {"game": GameConfig, "vision": VisionConfig, "audio": AudioConfig}
+_SECTIONS: dict[str, type] = {
+    "game": GameConfig,
+    "vision": VisionConfig,
+    "audio": AudioConfig,
+    "run": RunConfig,
+}
 
 
 def ensure_config_file(path: Path | None = None) -> bool:
@@ -170,6 +199,13 @@ def _validate(path: Path, cfg: Config) -> None:
     check(a.refractory_s >= 0.0, "audio.refractory_s", "must be 0 or positive")
     families = ", ".join(CLIP_FAMILIES)
     check(a.bite_clip in CLIP_FAMILIES, "audio.bite_clip", f"must be one of: {families}")
+    r = cfg.run
+    check(r.icon_timeout_s > 0, "run.icon_timeout_s", "must be positive")
+    check(r.cast_timeout_s > 0, "run.cast_timeout_s", "must be positive")
+    check(r.loot_timeout_s > 0, "run.loot_timeout_s", "must be positive")
+    check(r.pause_min_s >= 0, "run.pause_min_s", "must be 0 or positive")
+    check(r.pause_min_s <= r.pause_max_s, "run.pause_min_s", "must not exceed run.pause_max_s")
+    check(10 <= r.key_hold_ms <= 500, "run.key_hold_ms", "must be between 10 and 500")
 
 
 def to_toml(cfg: Config) -> str:

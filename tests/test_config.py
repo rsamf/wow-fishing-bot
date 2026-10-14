@@ -7,6 +7,7 @@ from wowfish.config import (
     Config,
     ConfigError,
     GameConfig,
+    RunConfig,
     VisionConfig,
     ensure_config_file,
     load_config,
@@ -31,6 +32,51 @@ def test_defaults_match_the_spec():
     assert AudioConfig() == AudioConfig(
         device="", bite_clip="fishingbobber", bite_threshold=0.68, refractory_s=3.0
     )
+
+
+def test_run_defaults_match_the_spec():
+    assert RunConfig() == RunConfig(
+        icon_timeout_s=6.0,
+        cast_timeout_s=30.0,
+        loot_timeout_s=3.0,
+        pause_min_s=0.5,
+        pause_max_s=2.0,
+        key_hold_ms=60,
+    )
+    assert DEFAULTS.run == RunConfig()
+    assert "[run]" in DEFAULT_CONFIG_TEXT and "icon_timeout_s = 6.0" in DEFAULT_CONFIG_TEXT
+
+
+@pytest.mark.parametrize(
+    ("text", "key"),
+    [
+        ("[run]\nicon_timeout_s = 0\n", "run.icon_timeout_s"),
+        ("[run]\ncast_timeout_s = -1\n", "run.cast_timeout_s"),
+        ("[run]\nloot_timeout_s = 0.0\n", "run.loot_timeout_s"),
+        ("[run]\npause_min_s = 3.0\npause_max_s = 1.0\n", "run.pause_min_s"),
+        ("[run]\npause_min_s = -0.1\n", "run.pause_min_s"),
+        ("[run]\nkey_hold_ms = 5\n", "run.key_hold_ms"),
+        ("[run]\nkey_hold_ms = 900\n", "run.key_hold_ms"),
+    ],
+)
+def test_run_values_are_validated(text, key):
+    paths.config_file().write_text(text)
+    with pytest.raises(ConfigError) as exc:
+        load_config()
+    assert key in str(exc.value)
+
+
+def test_run_table_round_trips():
+    cfg = Config(
+        game=GameConfig(),
+        vision=VisionConfig(),
+        audio=AudioConfig(),
+        run=RunConfig(icon_timeout_s=4.5, pause_min_s=0.0, pause_max_s=0.0, key_hold_ms=40),
+    )
+    save_config(cfg)
+    loaded, warnings = load_config()
+    assert loaded == cfg and warnings == []
+    assert to_toml(cfg).index("[audio]") < to_toml(cfg).index("[run]")
 
 
 def test_ensure_config_file_creates_with_defaults_once():
