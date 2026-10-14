@@ -39,7 +39,10 @@ def test_config_reports_syntax_error_and_exits_1(cli_runner):
     assert "Traceback" not in result.output
 
 
-def test_doctor_exits_0_on_a_bare_machine(cli_runner):
+def test_doctor_exits_0_on_a_bare_machine(cli_runner, monkeypatch):
+    from wowfish import doctor
+
+    monkeypatch.setattr(doctor, "find_window", lambda title="World of Warcraft": None)
     result = cli_runner.invoke(app, ["doctor"])
     assert result.exit_code == 0
     lines = result.output.strip().splitlines()

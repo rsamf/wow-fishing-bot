@@ -6,7 +6,7 @@ import typer
 
 
 def register_all(app: typer.Typer) -> None:
-    from wowfish.commands import calibrate, listen, verify_bite, watch
+    from wowfish.commands import calibrate, listen, run, verify_bite, watch
 
-    for module in (calibrate, watch, listen, verify_bite):
+    for module in (calibrate, watch, listen, verify_bite, run):
         module.register(app)

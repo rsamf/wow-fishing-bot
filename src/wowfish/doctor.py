@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import os
 import platform
-import shutil
-import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Literal
 
 from wowfish import __version__, paths
+from wowfish.capture import find_window
 
 Level = Literal["ok", "warn", "fail"]
 
@@ -56,42 +55,31 @@ def probe_system() -> ProbeResult:
     return ProbeResult("system", "ok", detail)
 
 
-def _screencast_portal_available() -> bool:
-    """True if org.freedesktop.portal.ScreenCast answers on the session bus."""
-    tool = shutil.which("busctl")
-    if not tool:
-        return False
+def _x_display_opens() -> tuple[bool, str]:
     try:
-        proc = subprocess.run(
-            [
-                tool,
-                "--user",
-                "introspect",
-                "org.freedesktop.portal.Desktop",
-                "/org/freedesktop/portal/desktop",
-                "org.freedesktop.portal.ScreenCast",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=3,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return proc.returncode == 0 and "CreateSession" in proc.stdout
+        from Xlib import display
+
+        display.Display().close()
+        return True, ""
+    except Exception as e:
+        return False, f"{type(e).__name__}: {e}"
 
 
 def probe_display() -> ProbeResult:
     if sys.platform != "linux":
         return ProbeResult("display", "ok", "native")
-    session = os.environ.get("XDG_SESSION_TYPE", "").lower()
-    if session == "wayland" or (not session and os.environ.get("WAYLAND_DISPLAY")):
-        if _screencast_portal_available():
-            return ProbeResult("display", "ok", "wayland (ScreenCast portal available)")
-        return ProbeResult("display", "warn", "wayland, ScreenCast portal not reachable")
-    if session == "x11" or os.environ.get("DISPLAY"):
-        return ProbeResult("display", "ok", "x11")
-    return ProbeResult("display", "warn", "none")
+    name = os.environ.get("DISPLAY")
+    if not name:
+        return ProbeResult(
+            "display",
+            "warn",
+            "DISPLAY is not set; the bot needs X11 or Xwayland (log into a session with one)",
+        )
+    ok, why = _x_display_opens()
+    if not ok:
+        return ProbeResult("display", "fail", f"cannot open {name}: {why}")
+    server = "Xwayland" if os.environ.get("WAYLAND_DISPLAY") else "X11"
+    return ProbeResult("display", "ok", f"{name} ({server})")
 
 
 def probe_opencv() -> ProbeResult:
@@ -118,8 +106,55 @@ def probe_audio() -> ProbeResult:
 
 
 def probe_game_window() -> ProbeResult:
-    # Window discovery lands with the bot runtime. The line exists so reports have a stable shape.
-    return ProbeResult("game window", "warn", "not found (window discovery not implemented yet)")
+    w = find_window("World of Warcraft")
+    if w is None:
+        return ProbeResult("game window", "warn", "not found; is the game running?")
+    return ProbeResult(
+        "game window", "ok", f"{w.title!r} {w.width}x{w.height} at +{w.left}+{w.top}"
+    )
+
+
+def _xtest_available() -> tuple[bool, str]:
+    from wowfish.input._x11 import xtest_available
+
+    return xtest_available()
+
+
+def probe_input() -> ProbeResult:
+    if sys.platform == "win32":
+        return ProbeResult("input", "ok", "SendInput")
+    if sys.platform == "linux" and os.environ.get("DISPLAY"):
+        ok, detail = _xtest_available()
+        return ProbeResult("input", "ok" if ok else "fail", detail)
+    return ProbeResult("input", "warn", "key presses not supported yet on this platform")
+
+
+def probe_calibration() -> ProbeResult:
+    from wowfish.config import ConfigError, load_config
+    from wowfish.vision.matcher import MIN_TEMPLATE_PX
+
+    hint = (
+        "run `wowfish calibrate --save` on a screenshot showing the gear icon (or the GUI's Setup)"
+    )
+    try:
+        cfg, _ = load_config()
+    except ConfigError as e:
+        return ProbeResult("calibration", "fail", str(e))
+    size = cfg.vision.icon_size_px
+    if size <= 0:
+        return ProbeResult("calibration", "warn", f"icon not calibrated; {hint}")
+    w = find_window("World of Warcraft")
+    if w is None:
+        return ProbeResult("calibration", "warn", f"{size} px (no game window to check it against)")
+    px = round(size * min(1.0, cfg.vision.match_width / w.width))
+    if px < MIN_TEMPLATE_PX:
+        return ProbeResult(
+            "calibration",
+            "fail",
+            f"{size} px is {px} px after downscaling this {w.width}-wide window "
+            f"(minimum {MIN_TEMPLATE_PX}); {hint}",
+        )
+    return ProbeResult("calibration", "ok", f"{size} px ({px} px in the matcher)")
 
 
 def probe_config() -> ProbeResult:
@@ -142,5 +177,7 @@ def default_probes() -> list[Probe]:
         probe_opencv,
         probe_audio,
         probe_game_window,
+        probe_input,
+        probe_calibration,
         probe_config,
     ]

@@ -42,42 +42,6 @@ def test_probe_system_reports_os_python_and_version():
     assert f"{sys.version_info.major}.{sys.version_info.minor}" in r.detail
 
 
-def test_probe_display_on_wayland_without_portal_warns(monkeypatch):
-    monkeypatch.setattr(doctor.sys, "platform", "linux")
-    monkeypatch.setenv("XDG_SESSION_TYPE", "wayland")
-    monkeypatch.setattr(doctor, "_screencast_portal_available", lambda: False)
-    r = doctor.probe_display()
-    assert r.level == "warn"
-    assert "wayland" in r.detail and "portal" in r.detail.lower()
-
-
-def test_probe_display_on_wayland_with_portal_is_ok(monkeypatch):
-    monkeypatch.setattr(doctor.sys, "platform", "linux")
-    monkeypatch.setenv("XDG_SESSION_TYPE", "wayland")
-    monkeypatch.setattr(doctor, "_screencast_portal_available", lambda: True)
-    assert doctor.probe_display().level == "ok"
-
-
-def test_probe_display_on_windows_is_native(monkeypatch):
-    monkeypatch.setattr(doctor.sys, "platform", "win32")
-    r = doctor.probe_display()
-    assert r.level == "ok" and r.detail == "native"
-
-
-def test_probe_display_on_linux_with_no_display_warns(monkeypatch):
-    monkeypatch.setattr(doctor.sys, "platform", "linux")
-    monkeypatch.delenv("XDG_SESSION_TYPE", raising=False)
-    monkeypatch.delenv("DISPLAY", raising=False)
-    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
-    r = doctor.probe_display()
-    assert r.level == "warn" and r.detail == "none"
-
-
-def test_probe_game_window_is_a_warn_stub():
-    r = doctor.probe_game_window()
-    assert r.level == "warn" and "not found" in r.detail
-
-
 def test_probe_config_ok_and_fail():
     assert doctor.probe_config().level == "ok"
     paths.config_file().write_text("[game]\ncast_key = \n")

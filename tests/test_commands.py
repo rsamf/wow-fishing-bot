@@ -197,3 +197,46 @@ def test_watch_refuses_an_icon_size_too_small_for_the_window(cli_runner, tmp_pat
     assert result.exit_code == 1, result.output
     assert "icon_size_px=19" in result.output and "7 px" in result.output
     assert "calibrate" in result.output
+
+
+def test_run_refuses_when_the_engine_cannot_be_built(cli_runner, monkeypatch):
+    from wowfish.commands import run as run_cmd
+
+    def boom(cfg, session_s=None, title="World of Warcraft"):
+        raise RuntimeError("the interact icon is not calibrated; run `wowfish calibrate --save`")
+
+    monkeypatch.setattr(run_cmd, "build_engine", boom)
+    result = cli_runner.invoke(app, ["run"])
+    assert result.exit_code == 1 and "calibrate --save" in result.output
+
+
+def test_run_prints_events_until_the_engine_stops(cli_runner, monkeypatch):
+    from tests.fakes import (
+        WINDOW,
+        FakeAudio,
+        FakeCapturer,
+        FakeDetector,
+        FakeInput,
+        FakeMatcher,
+        no_match,
+    )
+    from wowfish.commands import run as run_cmd
+    from wowfish.config import AudioConfig, Config, GameConfig, VisionConfig
+    from wowfish.engine.engine import FishingEngine
+
+    def build(cfg, session_s=None, title="World of Warcraft"):
+        cfg = Config(
+            game=GameConfig(cast_key="8"), vision=VisionConfig(icon_size_px=40), audio=AudioConfig()
+        )
+        return FishingEngine(
+            cfg, WINDOW, capturer=FakeCapturer(), input_device=FakeInput(),
+            audio_source=FakeAudio(), detector=FakeDetector(), matcher=FakeMatcher([no_match()]),
+            session_s=0.3,
+        )  # fmt: skip
+
+    monkeypatch.setattr(run_cmd, "build_engine", build)
+    result = cli_runner.invoke(app, ["run", "--minutes", "1"])
+    assert result.exit_code == 0, result.output
+    assert "Pressed 8 to cast" in result.output
+    assert "Stopped (session limit)" in result.output
+    assert "casts 1," in result.output.splitlines()[-1]
