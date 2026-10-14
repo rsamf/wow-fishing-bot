@@ -61,6 +61,15 @@ class BiteDetector:
         self._level_dbfs = -120.0
         self._quiet_until = -math.inf
 
+    def reset(self) -> None:
+        """Forget buffered audio, runs, and the refractory period (e.g. right after a cast)."""
+        self._pending = np.zeros(0, dtype=np.float32)
+        self._feats = np.zeros((0, self.p.n_mels), dtype=np.float32)
+        for name in self._run:
+            self._run[name] = 0
+        self._armed.clear()
+        self._quiet_until = -math.inf
+
     @property
     def last_scores(self) -> tuple[ClipScore, ...]:
         return tuple(self._scores[fp.name] for fp in self.fingerprints)
