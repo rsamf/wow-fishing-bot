@@ -17,6 +17,7 @@ dependencies = [
   "soundcard>=0.4,<1",
   "mss>=10.2.0",
   "python-xlib>=0.33 ; sys_platform == 'linux'",
+  "ttkbootstrap>=1.10,<3",
 ]
 
 [project.optional-dependencies]
