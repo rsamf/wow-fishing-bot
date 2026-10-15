@@ -104,16 +104,24 @@ than typing into that window, and resumes when the game is focused again. The se
 after `session_minutes` (default 60) or when you stop it.
 
 Every step is reported as "what I did. What I will do next.", for example "Found the bobber
-at (2622, 899). Waiting for a splash; will press f when I hear one." The GUI also shows the
-frame the icon was found in with a box around it. Timeouts and pauses are in the `[run]`
-table of the config file.
+at (2622, 899). Waiting for a splash; will press f when I hear one." While it waits it reports
+what it hears every two seconds ("Listening at -28 dBFS; best match so far 0.41
+(fishingbobber_2)"), and a missed splash says how close the best match came. The GUI also
+shows the frame the icon was found in with a box around it. Timeouts and pauses are in the
+`[run]` table of the config file. Every line also goes to the log file named by `wowfish doctor`.
+
+The bot hears the monitor of your output device, so it hears everything that plays through
+it. Music or a video in another application mixes over the splash and lowers its score;
+if the bot stops hearing splashes, pause other audio. To debug a missed splash, run
+`wowfish run --record-audio heard.wav` and then `wowfish verify-bite heard.wav`, which scores
+the whole recording and lists every bite it can find.
 
 ## Commands
 
 | command | what it does |
 |---|---|
 | `wowfish gui` | The setup and fishing window |
-| `wowfish run [--minutes N]` | Fish from the terminal until Ctrl-C or the session limit |
+| `wowfish run [--minutes N] [--record-audio WAV]` | Fish from the terminal until Ctrl-C or the session limit; optionally save everything heard |
 | `wowfish doctor` | Check OS, display, OpenCV, audio devices, game window, input, calibration, config |
 | `wowfish calibrate SHOT.png [--save]` | Measure the interact icon's on-screen size from a screenshot |
 | `wowfish watch --live` | Show what the matcher sees: phase, score, position, milliseconds per frame |

@@ -62,6 +62,16 @@ class Caught(Event):
 class Timeout(Event):
     what: str  # "icon" | "bite" | "loot"
     after_s: float
+    detail: str = ""  # for "bite": the best match heard while waiting, so a miss explains itself
+
+
+@dataclass(frozen=True)
+class Listening(Event):
+    """Periodic while waiting for the splash: what the detector hears and its best match so far."""
+
+    level_dbfs: float
+    best_clip: str  # "" when nothing has scored yet
+    best_score: float  # -1.0 when nothing has scored yet
 
 
 @dataclass(frozen=True)

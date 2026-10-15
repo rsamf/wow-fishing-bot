@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import queue
 import time
+from pathlib import Path
+from typing import Annotated
 
 import typer
+from loguru import logger
 
 from wowfish.audio import AudioUnavailable
 from wowfish.commands._common import fail, load_config_or_fail
@@ -17,7 +20,9 @@ from wowfish.gui.presenter import describe
 
 
 def _line(event: ev.Event) -> str:
-    return f"{time.strftime('%H:%M:%S')}  {describe(event)}"
+    text = describe(event)
+    logger.debug(text)  # the log file keeps the session; the terminal shows it below
+    return f"{time.strftime('%H:%M:%S')}  {text}"
 
 
 def run(
@@ -25,17 +30,31 @@ def run(
         None, "--minutes", min=0.1, help="Stop after this long (default: game.session_minutes)."
     ),
     title: str = typer.Option("World of Warcraft", "--title", help="Window title to drive."),
+    record_audio: Annotated[
+        Path | None,
+        typer.Option(
+            "--record-audio",
+            help="Save everything the bot hears to this WAV when it stops (for `verify-bite`).",
+        ),
+    ] = None,
 ) -> None:
     """Cast, find the bobber, hear the splash, press Interact, loot, repeat. Ctrl-C stops."""
     cfg = load_config_or_fail()
     try:
-        engine = build_engine(cfg, session_s=minutes * 60 if minutes else None, title=title)
+        engine = build_engine(
+            cfg,
+            session_s=minutes * 60 if minutes else None,
+            title=title,
+            record_audio=record_audio,
+        )
     except (RuntimeError, NotSupported, AudioUnavailable) as e:
         fail(str(e))
     thread = EngineThread(engine)
     thread.start()
     w = engine.window
     typer.echo(f"fishing in {w.title!r} ({w.width}x{w.height}); Ctrl-C stops", err=True)
+    audio_name = getattr(engine.audio, "name", type(engine.audio).__name__)
+    logger.debug(f"run: window {w.width}x{w.height}, audio {audio_name}")
     try:
         while True:
             try:
@@ -52,6 +71,8 @@ def run(
         thread.stop()
         while not engine.events.empty():
             typer.echo(_line(engine.events.get_nowait()))
+    if record_audio is not None:
+        typer.echo(f"wrote {record_audio}", err=True)
     typer.echo(engine.stats.as_line())
 
 

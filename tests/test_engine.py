@@ -559,3 +559,55 @@ def test_build_engine_no_longer_requires_a_saved_calibration(monkeypatch):
     assert eng.search is None  # nothing to try first; the first cast sweeps
     cfg = Config(game=GameConfig(), vision=VisionConfig(icon_size_px=40), audio=AudioConfig())
     assert engine_mod.build_engine(cfg).search is not None
+
+
+def test_listening_is_reported_every_two_seconds_with_the_best_match_so_far():
+    clock = FakeClock()
+    det = FakeDetector()
+    eng, _d = _to_wait_bite(detector=det, clock=clock)
+    det.scores["fishingbobber_2"] = 0.52
+    clock.t += 1.0
+    eng.step()
+    det.scores["fishingbobber_2"] = 0.31
+    clock.t += 1.1
+    eng.step()
+    clock.t += 1.0
+    eng.step()
+    heard = [e for e in drain(eng) if isinstance(e, ev.Listening)]
+    assert len(heard) == 1
+    assert heard[0].level_dbfs == -30.0
+    assert heard[0].best_clip == "fishingbobber_2" and heard[0].best_score == 0.52
+
+
+def test_bite_timeout_names_the_best_match_heard():
+    clock = FakeClock()
+    det = FakeDetector()
+    eng, _d = _to_wait_bite(detector=det, clock=clock)
+    det.scores["fishingbobber_2"] = 0.52
+    clock.t += 1.0
+    eng.step()
+    clock.t += 31.0
+    eng.step()
+    timeout = next(e for e in drain(eng) if isinstance(e, ev.Timeout))
+    assert timeout.detail == "best match 0.52 (fishingbobber_2)"
+
+
+def test_bite_timeout_says_when_nothing_matched_at_all():
+    clock = FakeClock()
+    det = FakeDetector()
+    det.scores = {"fishingbobber_2": -1.0}
+    eng, _d = _to_wait_bite(detector=det, clock=clock)
+    clock.t += 31.0
+    eng.step()
+    timeout = next(e for e in drain(eng) if isinstance(e, ev.Timeout))
+    assert timeout.detail == "nothing matched"
+
+
+def test_build_engine_can_record_everything_it_hears(monkeypatch, tmp_path):
+    from wowfish.audio._recording import RecordingSource
+
+    engine_mod = _patch_backends(monkeypatch, WINDOW)
+    cfg = Config(game=GameConfig(), vision=VisionConfig(icon_size_px=40), audio=AudioConfig())
+    eng = engine_mod.build_engine(cfg, record_audio=tmp_path / "heard.wav")
+    assert isinstance(eng.audio, RecordingSource) and eng.audio.path == tmp_path / "heard.wav"
+    assert engine_mod.build_engine(cfg).audio.__class__.__name__ == "ThreadedSource"

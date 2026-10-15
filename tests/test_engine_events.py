@@ -8,6 +8,7 @@ from wowfish.engine.events import (
     IconFound,
     IconLost,
     KeyPressed,
+    Listening,
     Paused,
     Resumed,
     StateChanged,
@@ -51,6 +52,15 @@ def test_other_event_words():
     assert describe(Caught(6.0)) == "Caught something; the bobber is gone"
     assert describe(Timeout(7.0, "icon", 6.0)) == "No gear icon within 6 s; recasting"
     assert describe(Timeout(7.0, "bite", 30.0)) == "No splash within 30 s; recasting"
+    assert describe(Timeout(7.0, "bite", 30.0, "best match 0.52 (fishingbobber_2)")) == (
+        "No splash within 30 s; best match 0.52 (fishingbobber_2); recasting"
+    )
+    assert describe(Listening(7.5, -28.4, "fishingbobber_2", 0.41)) == (
+        "Listening at -28 dBFS; best match so far 0.41 (fishingbobber_2)"
+    )
+    assert describe(Listening(7.5, -28.4, "", -1.0)) == (
+        "Listening at -28 dBFS; nothing has matched yet"
+    )
     assert describe(Timeout(7.0, "loot", 3.0)) == "Bobber still there 3 s after Interact; recasting"
     assert describe(Paused(8.0, "World of Warcraft is not the focused window")) == (
         "Paused: World of Warcraft is not the focused window"

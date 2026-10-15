@@ -8,6 +8,7 @@ import random
 import time
 from collections.abc import Callable
 from dataclasses import replace
+from pathlib import Path
 from typing import Any
 
 import cv2
@@ -28,6 +29,7 @@ THUMB_WIDTH = 480
 AUDIO_BLOCK = 1024
 AUDIO_MAX_S = 2.0  # never read more than this at once; the device buffer may drop older audio
 STATS_EVERY_S = 10.0
+LISTEN_EVERY_S = 2.0  # while waiting for the splash, say what is heard this often
 SLEEP_SLICE_S = 0.1
 RESWEEP_AFTER_TIMEOUTS = 2  # icon timeouts in a row before the next cast measures the icon again
 
@@ -95,6 +97,8 @@ class FishingEngine:
         self._last_audio: float | None = None
         self._audio_frames = 0
         self._last_stats = 0.0
+        self._last_listen = 0.0
+        self._best_heard: tuple[str, float] = ("", -1.0)  # best clip score since the icon was found
 
     # -- public ------------------------------------------------------------------------------
 
@@ -150,6 +154,7 @@ class FishingEngine:
         if self.state is State.WAIT_BITE:
             for chunk in chunks:
                 bites.extend(self.detector.feed(chunk))
+            self._note_scores()
 
         if self.state is State.IDLE:
             self._cast(now)
@@ -226,6 +231,8 @@ class FishingEngine:
         thumb, box = _thumbnail(frame, m.x, m.y, m.size)
         self._emit(ev.IconFound(self._t(), thumb, box, float(m.score), int(m.size), (m.x, m.y)))
         self.detector.reset()
+        self._best_heard = ("", -1.0)
+        self._last_listen = self._clock()
         self._change(
             State.WAIT_BITE,
             f"Found the bobber at ({m.x}, {m.y})",
@@ -261,7 +268,9 @@ class FishingEngine:
             self._miss("Lost sight of the bobber")
             return
         if now - self._t_cast > self.cfg.run.cast_timeout_s:
-            self._emit(ev.Timeout(self._t(), "bite", self.cfg.run.cast_timeout_s))
+            clip, score = self._best_heard
+            detail = f"best match {score:.2f} ({clip})" if clip else "nothing matched"
+            self._emit(ev.Timeout(self._t(), "bite", self.cfg.run.cast_timeout_s, detail))
             self._miss("No splash heard")
 
     def _after_interact(self, now: float) -> None:
@@ -337,8 +346,20 @@ class FishingEngine:
         self._emit(ev.StateChanged(self._t(), state, did, nxt))
         self._emit_stats()
 
+    def _note_scores(self) -> None:
+        for sc in getattr(self.detector, "last_scores", ()):
+            if sc.score > self._best_heard[1]:
+                self._best_heard = (sc.name, float(sc.score))
+
     def _maybe_stats(self, now: float) -> None:
-        if self.state is State.WAIT_BITE and now - self._last_stats >= STATS_EVERY_S:
+        if self.state is not State.WAIT_BITE:
+            return
+        if now - self._last_listen >= LISTEN_EVERY_S:
+            self._last_listen = now
+            clip, score = self._best_heard
+            level = float(getattr(self.detector, "level_dbfs", -120.0))
+            self._emit(ev.Listening(self._t(), level, clip, score))
+        if now - self._last_stats >= STATS_EVERY_S:
             self._emit_stats()
 
     def _emit_stats(self) -> None:
@@ -394,13 +415,20 @@ def unsupported_platform() -> str:
 
 
 def build_engine(
-    cfg: Config, *, session_s: float | None = None, title: str = "World of Warcraft"
+    cfg: Config,
+    *,
+    session_s: float | None = None,
+    title: str = "World of Warcraft",
+    record_audio: Path | None = None,
 ) -> FishingEngine:
     """Wire the real capturer, input device, audio source, detector, and matcher for `cfg`.
 
-    Raises RuntimeError with a one-line hint when a prerequisite is missing.
+    `record_audio` saves everything the engine hears to that WAV when it stops (for debugging
+    missed splashes offline). Raises RuntimeError with a one-line hint when a prerequisite is
+    missing.
     """
     from wowfish.assets import CLIP_FAMILIES
+    from wowfish.audio._recording import RecordingSource
     from wowfish.audio.clips import build_fingerprints
     from wowfish.audio.detector import BiteDetector
     from wowfish.audio.devices import open_loopback
@@ -442,12 +470,15 @@ def build_engine(
         threshold=cfg.audio.bite_threshold,
         refractory_s=cfg.audio.refractory_s,
     )
+    audio: Any = ThreadedSource(open_loopback(cfg.audio.device))
+    if record_audio is not None:
+        audio = RecordingSource(audio, record_audio)
     return FishingEngine(
         cfg,
         window,
         capturer=get_capturer(),
         input_device=get_input_device(),
-        audio_source=ThreadedSource(open_loopback(cfg.audio.device)),
+        audio_source=audio,
         detector=detector,
         matcher_factory=matcher_factory,
         on_calibrated=on_calibrated,

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from loguru import logger
 
 from wowfish import paths
 from wowfish.audio import AudioChunk, AudioUnavailable
@@ -46,8 +47,14 @@ def describe(event: ev.Event) -> str:
             return "Caught something; the bobber is gone"
         case ev.Timeout(what="icon", after_s=s):
             return f"No gear icon within {s:g} s; recasting"
+        case ev.Timeout(what="bite", after_s=s, detail=detail) if detail:
+            return f"No splash within {s:g} s; {detail}; recasting"
         case ev.Timeout(what="bite", after_s=s):
             return f"No splash within {s:g} s; recasting"
+        case ev.Listening(level_dbfs=level, best_clip=clip, best_score=score) if clip:
+            return f"Listening at {level:.0f} dBFS; best match so far {score:.2f} ({clip})"
+        case ev.Listening(level_dbfs=level):
+            return f"Listening at {level:.0f} dBFS; nothing has matched yet"
         case ev.Timeout(after_s=s):
             return f"Bobber still there {s:g} s after Interact; recasting"
         case ev.Paused(reason=reason):
@@ -276,6 +283,7 @@ class Presenter:
                     break
                 items.append(event)
                 lines.append(describe(event))
+                logger.debug(lines[-1])
                 self._apply(event)
             if not self._thread.is_alive() and q.empty():
                 self._thread = None

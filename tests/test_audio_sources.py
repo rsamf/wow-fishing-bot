@@ -95,3 +95,30 @@ def test_threaded_source_caps_its_backlog():
     with ThreadedSource(inner, block=1024, max_s=0.2) as src:
         time.sleep(0.6)
         assert len(src.read(10 * 22050)) <= int(0.2 * 22050) + 1024
+
+
+def test_recording_source_passes_audio_through_and_writes_a_wav_on_exit(tmp_path):
+    from wowfish.audio._recording import RecordingSource
+    from wowfish.audio.wav import read_wav
+
+    _write(tmp_path / "m.wav", 22050, 1, 0.2)  # 4410 samples
+    inner = WavFileSource(tmp_path / "m.wav")
+    out = tmp_path / "heard.wav"
+    with RecordingSource(inner, out) as src:
+        assert src.sample_rate == 22050 and src.name == inner.__class__.__name__
+        a = src.read(3000)
+        b = src.read(1410)
+        assert not out.exists()
+    heard, rate = read_wav(out)
+    assert rate == 22050 and len(heard) == 4410
+    assert np.allclose(heard, np.concatenate([a, b]), atol=1e-4)
+
+
+def test_recording_source_writes_nothing_when_nothing_was_read(tmp_path):
+    from wowfish.audio._recording import RecordingSource
+
+    _write(tmp_path / "m.wav", 22050, 1, 0.1)
+    out = tmp_path / "heard.wav"
+    with RecordingSource(WavFileSource(tmp_path / "m.wav"), out):
+        pass
+    assert not out.exists()

@@ -6,7 +6,7 @@ from collections.abc import Callable
 
 import numpy as np
 
-from wowfish.audio.detector import BiteEvent
+from wowfish.audio.detector import BiteEvent, ClipScore
 from wowfish.capture import Box, WindowRef
 from wowfish.vision.matcher import NO_MATCH, IconMatch
 
@@ -76,6 +76,12 @@ class FakeDetector:
         self.bites_at_feed = bites_at_feed or {}
         self.feeds = 0
         self.resets = 0
+        self.level_dbfs = -30.0
+        self.scores: dict[str, float] = {"fishingbobber_2": 0.41, "fishbite": 0.2}
+
+    @property
+    def last_scores(self) -> tuple[ClipScore, ...]:
+        return tuple(ClipScore(n, s, 0.0) for n, s in self.scores.items())
 
     def reset(self) -> None:
         self.resets += 1
