@@ -431,7 +431,7 @@ def build_engine(
     from wowfish.audio._recording import RecordingSource
     from wowfish.audio.clips import build_fingerprints
     from wowfish.audio.detector import BiteDetector
-    from wowfish.audio.devices import open_loopback
+    from wowfish.audio.devices import open_capture
     from wowfish.input import get_input_device
     from wowfish.vision.matcher import MIN_TEMPLATE_PX, IconMatcher
     from wowfish.vision.template import load_icon_templates, template_for_size
@@ -470,7 +470,7 @@ def build_engine(
         threshold=cfg.audio.bite_threshold,
         refractory_s=cfg.audio.refractory_s,
     )
-    audio: Any = ThreadedSource(open_loopback(cfg.audio.device))
+    audio: Any = ThreadedSource(open_capture(cfg.audio.selector, pid=window.pid, title=title))
     if record_audio is not None:
         audio = RecordingSource(audio, record_audio)
     return FishingEngine(

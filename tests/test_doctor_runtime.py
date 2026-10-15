@@ -68,6 +68,7 @@ def test_default_probes_include_the_runtime_ones():
         "probe_display",
         "probe_opencv",
         "probe_audio",
+        "probe_game_audio",
         "probe_game_window",
         "probe_input",
         "probe_calibration",

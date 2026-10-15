@@ -23,6 +23,7 @@ from wowfish.engine.thread import EngineThread
 from wowfish.gui import image
 from wowfish.input import keys
 
+GAME_TITLE = "World of Warcraft"
 BLOCK = 1024
 
 
@@ -140,19 +141,22 @@ class Presenter:
         *,
         build_engine: Callable[..., Any] | None = None,
         list_devices: Callable[[], list[Any]] | None = None,
-        open_loopback: Callable[..., Any] | None = None,
+        open_capture: Callable[..., Any] | None = None,
         find_window: Callable[..., Any] | None = None,
         get_capturer: Callable[[], Any] | None = None,
     ) -> None:
-        from wowfish.audio.devices import list_loopback_devices
-        from wowfish.audio.devices import open_loopback as real_open
+        from wowfish.audio.devices import GAME, GAME_CHOICE, LoopbackDevice, list_loopback_devices
+        from wowfish.audio.devices import open_capture as real_open
         from wowfish.capture import find_window as real_find
         from wowfish.capture import get_capturer as real_capturer
         from wowfish.engine.engine import build_engine as real_build
 
         self._build_engine = build_engine or real_build
         self._list_devices = list_devices or list_loopback_devices
-        self._open_loopback = open_loopback or real_open
+        self._open_capture = open_capture or real_open
+        self._game = GAME
+        self._game_choice = GAME_CHOICE
+        self._device_type = LoopbackDevice
         self._find_window = find_window or real_find
         self._get_capturer = get_capturer or real_capturer
 
@@ -185,18 +189,29 @@ class Presenter:
         self.reload()
 
     def audio_devices(self) -> list[Any]:
+        """The game's own audio first (default), then the loopback monitors."""
         try:
-            return self._list_devices()
+            monitors = self._list_devices()
         except AudioUnavailable:
-            return []
+            monitors = []
+        return [self._game_choice] + [self._device_type(d.id, d.name, False) for d in monitors]
 
     def default_device(self) -> Any | None:
         found = self.audio_devices()
         return next((d for d in found if d.is_default), found[0] if found else None)
 
     def save_audio_device(self, selector: str) -> None:
-        save_config(replace(self.cfg, audio=replace(self.cfg.audio, device=selector)))
+        if selector == self._game:
+            audio = replace(self.cfg.audio, capture="game")
+        else:
+            audio = replace(self.cfg.audio, capture="device", device=selector)
+        save_config(replace(self.cfg, audio=audio))
         self.reload()
+
+    def _open_audio(self, selector: str | None) -> Any:
+        selector = selector if selector is not None else self.cfg.audio.selector
+        window = self._find_window(GAME_TITLE) if selector == self._game else None
+        return self._open_capture(selector, pid=window.pid if window else None, title=GAME_TITLE)
 
     def save_calibration(self) -> None:
         if self.last_calibration is None:
@@ -388,9 +403,7 @@ class Presenter:
         from wowfish.audio.wav import write_wav
 
         try:
-            source = self._open_loopback(
-                selector if selector is not None else self.cfg.audio.device
-            )
+            source = self._open_audio(selector)
             chunks: list[np.ndarray] = []
             frames = 0
             with source:
@@ -431,9 +444,7 @@ class Presenter:
 
         self.stop_meter()
         try:
-            source = self._open_loopback(
-                selector if selector is not None else self.cfg.audio.device
-            )
+            source = self._open_audio(selector)
         except Exception as e:
             self._results.put(WorkerFailed("open the audio device", str(e)))
             return

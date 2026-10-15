@@ -69,10 +69,13 @@ On your machine:
 - **Linux (GNOME on Wayland):** the first synthetic key press opens a "Remote Desktop" dialog.
   Switch on *Allow Remote Interaction* and click *Share*. Until you do, key presses are
   silently dropped.
-- **macOS:** install a virtual loopback device such as
-  [BlackHole](https://existential.audio/blackhole/) and route the game's audio through it.
-  macOS has no built-in way to record what it plays.
-- **Windows:** nothing to do. Game audio is captured through WASAPI loopback.
+- **Linux audio:** the bot hears the game's own PipeWire stream, nothing else. It needs the
+  `pw-record` tool (package `pipewire-bin`, `pipewire-utils`, or `pipewire-tools`).
+- **Windows:** nothing to do. The game's own audio is captured through WASAPI process loopback
+  (Windows 10 version 2004 or later).
+- **macOS:** per-application capture is not available. Install a virtual loopback device such
+  as [BlackHole](https://existential.audio/blackhole/), route the game's audio through it, and
+  pick it on the Setup tab (this sets `audio.capture = "device"`).
 
 Then open the window and work down its Setup tab:
 
@@ -110,11 +113,13 @@ what it hears every two seconds ("Listening at -28 dBFS; best match so far 0.41
 shows the frame the icon was found in with a box around it. Timeouts and pauses are in the
 `[run]` table of the config file. Every line also goes to the log file named by `wowfish doctor`.
 
-The bot hears the monitor of your output device, so it hears everything that plays through
-it. Music or a video in another application mixes over the splash and lowers its score;
-if the bot stops hearing splashes, pause other audio. To debug a missed splash, run
-`wowfish run --record-audio heard.wav` and then `wowfish verify-bite heard.wav`, which scores
-the whole recording and lists every bite it can find.
+By default the bot hears only the game's own audio stream (`audio.capture = "game"`), so
+music or a video in another application cannot drown the splash. `wowfish doctor` shows the
+stream it would capture. Choosing a loopback device on the Setup tab instead makes it hear
+everything that plays through that output (`audio.capture = "device"`); then pause other audio
+while fishing. To debug a missed splash, run `wowfish run --record-audio heard.wav` and then
+`wowfish verify-bite heard.wav`, which scores the whole recording and lists every bite it can
+find.
 
 ## Commands
 
@@ -126,7 +131,7 @@ the whole recording and lists every bite it can find.
 | `wowfish calibrate SHOT.png [--save]` | Measure the interact icon's on-screen size from a screenshot |
 | `wowfish watch --live` | Show what the matcher sees: phase, score, position, milliseconds per frame |
 | `wowfish watch --from DIR` | Same, over saved frames; `--save-frames` writes annotated thumbnails |
-| `wowfish listen [--list] [--record WAV]` | List loopback devices, meter game audio, print bites as they are heard |
+| `wowfish listen [--list] [--device D] [--record WAV]` | Meter the game's audio (or loopback device D), print bites as they are heard |
 | `wowfish verify-bite WAV [--save]` | Score a recording against every splash clip and pick the bite |
 | `wowfish config` | Create the config file if needed and print the resolved settings |
 | `wowfish config --path` | Print only the config file location |

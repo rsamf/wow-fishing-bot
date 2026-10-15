@@ -42,7 +42,7 @@ def make(**kw):
     deps = {
         "build_engine": _engine,
         "list_devices": lambda: list(DEVICES),
-        "open_loopback": lambda selector="": WavFileSource("tests/fixtures/bite_strong.wav"),
+        "open_capture": lambda selector="", **kw: WavFileSource("tests/fixtures/bite_strong.wav"),
         "find_window": lambda title="World of Warcraft": WINDOW,
         "get_capturer": lambda: FakeCapturer(lambda i, box: ICON_FRAME.copy()),
     }
@@ -77,11 +77,22 @@ def test_save_keys_validates_and_persists():
         pres.save_keys("shift+8", "f")
 
 
+def test_game_audio_is_the_first_choice_and_saving_it_sets_capture():
+    pres = make()
+    choices = pres.audio_devices()
+    assert choices[0].id == "game" and pres.default_device().id == "game"
+    pres.save_audio_device("game")
+    assert load_config()[0].audio.capture == "game"
+    pres.save_audio_device("mon.a")
+    cfg = load_config()[0]
+    assert cfg.audio.capture == "device" and cfg.audio.device == "mon.a"
+
+
 def test_audio_devices_and_saving_the_choice():
     pres = make()
     names = [d.name for d in pres.audio_devices()]
-    assert names == ["Monitor of A", "Monitor of B"]
-    assert pres.default_device().id == "mon.b"
+    assert names == ["World of Warcraft only (recommended)", "Monitor of A", "Monitor of B"]
+    assert pres.default_device().id == "game"
     pres.save_audio_device("mon.a")
     assert load_config()[0].audio.device == "mon.a"
 

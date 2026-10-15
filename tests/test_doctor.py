@@ -57,7 +57,7 @@ def test_probe_config_warns_on_unknown_keys():
 
 @pytest.mark.parametrize(
     "name",
-    ["system", "display", "opencv", "audio", "game window", "config"],
+    ["system", "display", "opencv", "audio", "game audio", "game window", "config"],
 )
 def test_default_probes_cover_every_area(name):
     results = doctor.run_probes(doctor.default_probes())
@@ -86,3 +86,23 @@ def test_probe_audio_levels(monkeypatch):
 def test_probe_opencv_is_ok():
     r = doctor.probe_opencv()
     assert r.level == "ok" and r.detail[0].isdigit()
+
+
+def test_probe_game_audio_levels(monkeypatch):
+    from wowfish.audio import AudioUnavailable, devices
+
+    monkeypatch.setattr(doctor, "find_window", lambda title="World of Warcraft": None)
+    monkeypatch.setattr(
+        devices,
+        "describe_game_audio",
+        lambda pid, title="World of Warcraft": "stream 'WoW' (pid 7)",
+    )
+    r = doctor.probe_game_audio()
+    assert r.level == "ok" and "stream 'WoW'" in r.detail
+
+    def boom(pid, title="World of Warcraft"):
+        raise AudioUnavailable("no audio stream from 'World of Warcraft'")
+
+    monkeypatch.setattr(devices, "describe_game_audio", boom)
+    r = doctor.probe_game_audio()
+    assert r.level == "warn" and "no audio stream" in r.detail

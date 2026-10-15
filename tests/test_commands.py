@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import pytest
 
+from tests.fakes import WINDOW
 from tests.synth_audio import RATE, mix
 from tests.synth_vision import icon_rgba, paste_icon, water_background
 from wowfish import paths
@@ -265,3 +266,24 @@ def test_run_reports_audio_and_input_failures_without_a_traceback(cli_runner, mo
         result.exception, SystemExit
     )
     assert "error:" in result.output and str(exc).split("(")[0].strip() in result.output
+
+
+def test_listen_defaults_to_the_game_audio_and_says_so(cli_runner, monkeypatch):
+    from wowfish.audio import devices
+    from wowfish.audio._file import WavFileSource
+    from wowfish.commands import listen as listen_cmd
+
+    opened = []
+
+    def open_capture(selector, **kw):
+        opened.append((selector, kw))
+        return WavFileSource("tests/fixtures/bite_strong.wav")
+
+    monkeypatch.setattr(devices, "open_capture", open_capture)
+    monkeypatch.setattr(listen_cmd, "find_window", lambda title="World of Warcraft": WINDOW)
+    result = cli_runner.invoke(app, ["listen", "--seconds", "1"])
+    assert result.exit_code == 0, result.output
+    assert opened == [("game", {"pid": WINDOW.pid, "title": "World of Warcraft"})]
+    assert "listening to World of Warcraft only" in result.output
+    result = cli_runner.invoke(app, ["listen", "--seconds", "1", "--device", "hdmi"])
+    assert opened[-1][0] == "hdmi" and "listening on" in result.output

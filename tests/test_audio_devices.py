@@ -85,3 +85,51 @@ def test_no_loopback_devices(monkeypatch):
     assert dev.list_loopback_devices() == []
     with pytest.raises(AudioUnavailable):
         dev.open_loopback()
+
+
+def test_open_capture_game_dispatches_per_platform(monkeypatch):
+    calls = []
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(
+        dev, "_open_pipewire", lambda pid, name, **kw: calls.append(("pw", pid, name)) or "pw"
+    )
+    monkeypatch.setattr(
+        dev, "_open_wasapi", lambda pid, **kw: calls.append(("wasapi", pid)) or "wasapi"
+    )
+    assert dev.open_capture("game", pid=42, title="World of Warcraft") == "pw"
+    monkeypatch.setattr(sys, "platform", "win32")
+    assert dev.open_capture("game", pid=42, title="World of Warcraft") == "wasapi"
+    assert calls == [("pw", 42, "World of Warcraft"), ("wasapi", 42)]
+
+
+def test_open_capture_game_on_windows_needs_the_game_process(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
+    with pytest.raises(AudioUnavailable) as exc:
+        dev.open_capture("game", pid=None, title="World of Warcraft")
+    assert "World of Warcraft" in str(exc.value) and "running" in str(exc.value)
+
+
+def test_open_capture_game_is_unavailable_on_macos(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "darwin")
+    with pytest.raises(AudioUnavailable) as exc:
+        dev.open_capture("game", pid=1)
+    assert "macOS" in str(exc.value) and 'audio.capture = "device"' in str(exc.value)
+
+
+def test_open_capture_device_selectors_go_to_the_loopback_monitors(monkeypatch):
+    _fake_soundcard(monkeypatch, [_Mic("alsa_output.hdmi.monitor", "Monitor of HDMI Out", True)])
+    assert dev.open_capture("").name == "Monitor of HDMI Out"
+    assert dev.open_capture("hdmi").name == "Monitor of HDMI Out"
+
+
+def test_capture_choices_put_the_game_first_as_the_default(monkeypatch):
+    _fake_soundcard(monkeypatch, [_Mic("alsa_output.hdmi.monitor", "Monitor of HDMI Out", True)])
+    choices = dev.capture_choices()
+    assert choices[0] == dev.GAME_CHOICE
+    assert choices[0].id == "game" and choices[0].is_default and "only" in choices[0].name
+    assert [c.is_default for c in choices[1:]] == [False]
+
+
+def test_capture_choices_without_a_backend_still_offer_the_game(monkeypatch):
+    monkeypatch.setitem(sys.modules, "soundcard", None)
+    assert dev.capture_choices() == [dev.GAME_CHOICE]

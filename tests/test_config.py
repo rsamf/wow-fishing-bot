@@ -30,8 +30,14 @@ def test_defaults_match_the_spec():
         icon_size_px=0, icon_native_size=0, icon_threshold=0.75, match_width=1920
     )
     assert AudioConfig() == AudioConfig(
-        device="", bite_clip="fishingbobber", bite_threshold=0.68, refractory_s=3.0
+        capture="game", device="", bite_clip="fishingbobber", bite_threshold=0.68, refractory_s=3.0
     )
+
+
+def test_audio_selector_is_game_or_the_device():
+    assert AudioConfig().selector == "game"
+    assert AudioConfig(capture="device", device="bluez.monitor").selector == "bluez.monitor"
+    assert AudioConfig(capture="device").selector == ""
 
 
 def test_run_defaults_match_the_spec():
@@ -139,6 +145,7 @@ def test_syntax_error_reports_line_number():
         ("[vision]\nmatch_width = 100\n", "vision.match_width"),
         ("[vision]\nicon_size_px = -1\n", "vision.icon_size_px"),
         ("[audio]\nbite_threshold = 0\n", "audio.bite_threshold"),
+        ('[audio]\ncapture = "speakers"\n', "audio.capture"),
         ('[audio]\nbite_clip = "splashy"\n', "audio.bite_clip"),
         ("[audio]\nrefractory_s = -1.0\n", "audio.refractory_s"),
     ],
@@ -153,6 +160,7 @@ def test_out_of_range_values_are_config_errors(text, key):
 def test_to_toml_renders_all_three_tables_in_order():
     text = to_toml(DEFAULTS)
     assert text.index("[game]") < text.index("[vision]") < text.index("[audio]")
+    assert 'capture = "game"' in text
     assert 'interact_key = "f"' in text
     assert "icon_threshold = 0.75" in text
     assert 'bite_clip = "fishingbobber"' in text

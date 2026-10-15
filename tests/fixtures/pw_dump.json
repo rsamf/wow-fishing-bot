@@ -1,0 +1,7 @@
+[
+ {"id": 111, "type": "PipeWire:Interface:Node", "info": {"props": {"media.class": "Audio/Sink", "media.name": "OpenDots Air by Shokz input", "node.name": "bluez_output.B8:84:11:29:50:68", "object.serial": 2876}}},
+ {"id": 90, "type": "PipeWire:Interface:Node", "info": {"props": {"application.name": "World of Warcraft", "application.process.binary": "wine64-preloader", "application.process.id": 935841, "media.class": "Stream/Output/Audio", "media.name": "audio stream #1", "node.name": "World of Warcraft", "object.serial": 3129}}},
+ {"id": 82, "type": "PipeWire:Interface:Node", "info": {"props": {"application.name": "wowfish", "application.process.binary": "python3.12", "application.process.id": 941779, "media.class": "Stream/Input/Audio", "media.name": "outputstream", "node.name": "wowfish", "object.serial": 3237}}},
+ {"id": 95, "type": "PipeWire:Interface:Node", "info": {"props": {"application.name": "Firefox", "application.process.binary": "firefox", "application.process.id": 5555, "media.class": "Stream/Output/Audio", "media.name": "AudioStream", "node.name": "Firefox", "object.serial": 3300}}},
+ {"id": 7, "type": "PipeWire:Interface:Client", "info": {"props": {"application.name": "pipewire-pulse"}}}
+]

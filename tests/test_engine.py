@@ -409,7 +409,14 @@ def _patch_backends(monkeypatch, window):
     monkeypatch.setattr(engine_mod, "find_window", lambda title="World of Warcraft": window)
     monkeypatch.setattr(engine_mod, "get_capturer", lambda: FakeCapturer())
     monkeypatch.setattr(wowfish.input, "get_input_device", lambda: FakeInput())
-    monkeypatch.setattr(wowfish.audio.devices, "open_loopback", lambda sel="": FakeAudio())
+    opened = []
+
+    def open_capture(selector, **kw):
+        opened.append((selector, kw))
+        return FakeAudio()
+
+    monkeypatch.setattr(wowfish.audio.devices, "open_capture", open_capture)
+    engine_mod.opened_audio = opened  # for assertions
     return engine_mod
 
 
@@ -611,3 +618,20 @@ def test_build_engine_can_record_everything_it_hears(monkeypatch, tmp_path):
     eng = engine_mod.build_engine(cfg, record_audio=tmp_path / "heard.wav")
     assert isinstance(eng.audio, RecordingSource) and eng.audio.path == tmp_path / "heard.wav"
     assert engine_mod.build_engine(cfg).audio.__class__.__name__ == "ThreadedSource"
+
+
+def test_build_engine_captures_the_game_window_process_by_default(monkeypatch):
+    engine_mod = _patch_backends(monkeypatch, WINDOW)
+    cfg = Config(game=GameConfig(), vision=VisionConfig(icon_size_px=40), audio=AudioConfig())
+    engine_mod.build_engine(cfg)
+    assert engine_mod.opened_audio[-1] == (
+        "game",
+        {"pid": WINDOW.pid, "title": "World of Warcraft"},
+    )
+    cfg = Config(
+        game=GameConfig(),
+        vision=VisionConfig(icon_size_px=40),
+        audio=AudioConfig(capture="device", device="hdmi"),
+    )
+    engine_mod.build_engine(cfg)
+    assert engine_mod.opened_audio[-1][0] == "hdmi"

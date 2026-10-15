@@ -105,6 +105,16 @@ def probe_audio() -> ProbeResult:
     return ProbeResult("audio", "ok", f"{len(found)} loopback device(s), default: {default}")
 
 
+def probe_game_audio() -> ProbeResult:
+    from wowfish.audio import AudioUnavailable, devices
+
+    w = find_window("World of Warcraft")
+    try:
+        return ProbeResult("game audio", "ok", devices.describe_game_audio(w.pid if w else None))
+    except AudioUnavailable as e:
+        return ProbeResult("game audio", "warn", str(e))
+
+
 def probe_game_window() -> ProbeResult:
     w = find_window("World of Warcraft")
     if w is None:
@@ -176,6 +186,7 @@ def default_probes() -> list[Probe]:
         probe_display,
         probe_opencv,
         probe_audio,
+        probe_game_audio,
         probe_game_window,
         probe_input,
         probe_calibration,

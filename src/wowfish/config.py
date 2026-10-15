@@ -33,7 +33,11 @@ icon_threshold = 0.75
 match_width = 1920
 
 [audio]
-# Loopback device id or name substring. Empty = monitor of the default output.
+# "game": hear only the game's own audio stream (Linux PipeWire, Windows 10 2004+), so music or
+# videos in other applications cannot drown the splash. "device": hear the loopback `device`.
+capture = "game"
+# Loopback device id or name substring, used when capture = "device". Empty = monitor of the
+# default output.
 device = ""
 # Which clip family counts as the bite: "fishingbobber" or "fishbite".
 bite_clip = "fishingbobber"
@@ -89,10 +93,16 @@ class VisionConfig:
 
 @dataclass(frozen=True)
 class AudioConfig:
+    capture: str = "game"  # "game": the game's own audio stream; "device": the loopback `device`
     device: str = ""
     bite_clip: str = "fishingbobber"
     bite_threshold: float = 0.68
     refractory_s: float = 3.0
+
+    @property
+    def selector(self) -> str:
+        """What to open: "game", or the loopback device selector ("" = default output monitor)."""
+        return "game" if self.capture == "game" else self.device
 
 
 @dataclass(frozen=True)
@@ -195,6 +205,7 @@ def _validate(path: Path, cfg: Config) -> None:
     check(v.match_width >= 320, "vision.match_width", "must be at least 320")
     check(v.icon_size_px >= 0, "vision.icon_size_px", "must be 0 or positive")
     check(v.icon_native_size >= 0, "vision.icon_native_size", "must be 0 or positive")
+    check(a.capture in ("game", "device"), "audio.capture", 'must be "game" or "device"')
     check(0.0 < a.bite_threshold <= 1.0, "audio.bite_threshold", "must be in (0, 1]")
     check(a.refractory_s >= 0.0, "audio.refractory_s", "must be 0 or positive")
     families = ", ".join(CLIP_FAMILIES)
