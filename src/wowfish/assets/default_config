@@ -34,7 +34,7 @@ refractory_s = 3.0
 
 [run]
 # Recast if the gear icon is not seen this many seconds after casting.
-icon_timeout_s = 6.0
+icon_timeout_s = 4.0
 # Recast if no splash is heard this many seconds after casting.
 cast_timeout_s = 30.0
 # Count a miss if the bobber is still there this many seconds after pressing Interact.
