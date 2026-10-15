@@ -104,7 +104,7 @@ itself. Each cast: press the cast key, look for the gear icon for 6 s, listen fo
 pause a random half-second to two seconds, cast again. If the gear icon never shows or no
 splash comes, it recasts and counts a miss. If another window takes focus it pauses rather
 than typing into that window, and resumes when the game is focused again. The session ends
-after `session_minutes` (default 60) or when you stop it.
+after `session_minutes`, or runs until you stop it when that is 0 (the default).
 
 Every step is reported as "what I did. What I will do next.", for example "Found the bobber
 at (2622, 899). Waiting for a splash; will press f when I hear one." While it waits it reports

@@ -266,7 +266,8 @@ class Presenter:
             return
         self.reload()
         try:
-            engine = self._build_engine(self.cfg, session_s=minutes * 60 if minutes else None)
+            session_s = None if minutes is None else minutes * 60
+            engine = self._build_engine(self.cfg, session_s=session_s)
         except Exception as e:
             self._results.put(WorkerFailed("start", str(e)))
             return

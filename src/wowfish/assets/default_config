@@ -5,8 +5,8 @@
 cast_key = "1"
 # Keybind for Interact With Target (Options > Keybindings > Targeting).
 interact_key = "f"
-# Stop fishing after this many minutes.
-session_minutes = 60
+# Stop fishing after this many minutes. Set to 0 to run Forever!
+session_minutes = 0
 
 [vision]
 # On-screen size of the interact icon in pixels. 0 = not calibrated; `wowfish calibrate` sets it.

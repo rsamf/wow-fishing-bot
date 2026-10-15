@@ -27,5 +27,6 @@ def icon_path(native_size: int) -> Path:
 def clip_path(name: str) -> Path:
     return asset_dir() / "clips" / f"{name}.wav"
 
+
 def default_config_path() -> Path:
     return asset_dir() / "default_config"

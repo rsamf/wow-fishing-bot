@@ -32,7 +32,7 @@ class ConfigError(Exception):
 class GameConfig:
     cast_key: str = "1"
     interact_key: str = "f"
-    session_minutes: int = 60
+    session_minutes: int = 0
 
 
 @dataclass(frozen=True)
@@ -59,7 +59,7 @@ class AudioConfig:
 
 @dataclass(frozen=True)
 class RunConfig:
-    icon_timeout_s: float = 6.0
+    icon_timeout_s: float = 4.0
     cast_timeout_s: float = 30.0
     loot_timeout_s: float = 3.0
     pause_min_s: float = 0.5
@@ -152,6 +152,7 @@ def _validate(path: Path, cfg: Config) -> None:
         if not ok:
             raise ConfigError(path, f"{key} {rule}")
 
+    check(cfg.game.session_minutes >= 0, "game.session_minutes", "must be 0 (forever) or positive")
     v, a = cfg.vision, cfg.audio
     check(0.0 < v.icon_threshold <= 1.0, "vision.icon_threshold", "must be in (0, 1]")
     check(v.match_width >= 320, "vision.match_width", "must be at least 320")

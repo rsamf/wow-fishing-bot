@@ -27,7 +27,7 @@ def _line(event: ev.Event) -> str:
 
 def run(
     minutes: float | None = typer.Option(
-        None, "--minutes", min=0.1, help="Stop after this long (default: game.session_minutes)."
+        None, "--minutes", min=0.0, help="Stop after this long (default: game.session_minutes)."
     ),
     title: str = typer.Option("World of Warcraft", "--title", help="Window title to drive."),
     record_audio: Annotated[
@@ -43,7 +43,7 @@ def run(
     try:
         engine = build_engine(
             cfg,
-            session_s=minutes * 60 if minutes else None,
+            session_s=None if minutes is None else minutes * 60,
             title=title,
             record_audio=record_audio,
         )

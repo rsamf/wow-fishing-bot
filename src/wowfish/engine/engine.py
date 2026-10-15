@@ -124,7 +124,7 @@ class FishingEngine:
         if self._stop:
             self._finish("user")
             return
-        if now - self.started >= self.session_s:
+        if self.session_s != 0 and now - self.started >= self.session_s:
             self._finish("session limit")
             return
         try:
