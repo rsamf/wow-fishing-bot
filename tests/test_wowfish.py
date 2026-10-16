@@ -7,6 +7,9 @@ system, or Tk is touched, so a failure means the code or the assets changed, not
 
 from __future__ import annotations
 
+import subprocess
+import sys
+import tomllib
 from pathlib import Path
 
 import numpy as np
@@ -34,9 +37,13 @@ RATE = DEFAULT_MEL.sample_rate
 
 def test_bundled_assets_load():
     """Every sprite and clip the code expects is shipped and readable; the release check agrees."""
-    from scripts.check_release import check_assets_present
-
-    check_assets_present(REPO_ROOT)  # exits non-zero if anything is missing
+    version = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())["project"]["version"]
+    check = subprocess.run(
+        [sys.executable, str(REPO_ROOT / "scripts" / "check_release.py"), f"v{version}"],
+        capture_output=True,
+        text=True,
+    )
+    assert check.returncode == 0, check.stderr
     assert tuple(t.native_size for t in load_icon_templates()) == ICON_SIZES
     assert tuple(fp.name for fp in build_fingerprints()) == CLIP_NAMES
 
