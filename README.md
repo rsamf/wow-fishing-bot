@@ -1,7 +1,6 @@
 <div align="center">
 
 <img src="/assets/cover-photo.jpg" alt="AI-generated photo of a bot fishing" width="360" />
-
 <h1>WoW Fishing Forever</h1>
 
 <p><strong>A fishing bot for WoW</strong></p>
@@ -31,14 +30,21 @@ A fishing bot for **World of Warcraft: Forever**, successor to the 2019
 game window for the built-in interact icon over your bobber, listens to the game's own splash
 sound for the bite, and presses your Interact key.
 
-> 🎉 **Announcement** This was my very first Python project but, surprisingly, my most popular repo on GitHub. When I originally released this for WoW Classic, I had no idea it would get this much attention. I left this project unmaintained for 7 years, but I felt it was time for a return when I saw WoW Forever coming. I have come back to make many major improvements to the bot and its accessibility. The original bot was only suited for programmers, but now, I've designed it to be accessible to anyone by releasing GUI executables. Enjoy but understand the risk you're taking!
+> [!NOTE]
+> 🎉 **Announcement** This was my very first Python project but, surprisingly, my most popular repo on GitHub. 
+> When I originally released this for WoW Classic, I had no idea it would get this much attention. I left this
+> project unmaintained for 7 years, but I felt it was time for a return when I saw WoW Forever coming. I have 
+> come back to make many major improvements to the bot and its accessibility. The original bot was only suited 
+> for programmers, but now, I've designed it to be accessible to anyone by releasing GUI executables. Enjoy but 
+> understand the risk you're taking!
 
 
 ## Install
 
 ### Download an executable (easy, but not recommended)
 
-> [!WARN] Blizzard uses Warden, an anti-cheat program running alonside World of Warcraft. Warden is known
+> [!CAUTION]
+> Blizzard uses Warden, an anti-cheat program running alonside World of Warcraft. Warden is known
 > to scan for open window titles or process names. They can discover this project and ban "wowfish*".
 > Thus, it is recommended that you clone, rename the window title and process, and run the python, itself.
 
@@ -76,9 +82,9 @@ Mac users need to install a virtual loopback device such as [BlackHole](https://
 
 ## Go Fish
 
-> [!WARN] **Use at your own risk.** Automating gameplay violates Blizzard's terms of service and can
-> get your account banned. This project exists as a computer vision exercise. Nothing here
-> hides from anti-cheat, and nothing here should be run on an account you care about.
+> [!CAUTION]
+> **Use at your own risk.** Automating gameplay violates Blizzard's terms of service and can
+> get your account banned. This project exists for educational purposes only.
 
 In the game:
 
